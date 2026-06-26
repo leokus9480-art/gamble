@@ -1,8 +1,9 @@
 name: Deploy to GitHub Pages
 
+# Runs only when triggered manually. To use it, first enable Pages once:
+#   repo Settings -> Pages -> Build and deployment -> Source: "GitHub Actions"
+# then run this workflow (Actions tab -> Deploy to GitHub Pages -> Run workflow).
 on:
-  push:
-    branches: ["claude/study-timer-civilization-pg28z8"]
   workflow_dispatch:
 
 permissions:
@@ -31,8 +32,6 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

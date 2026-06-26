@@ -1,5 +1,5 @@
 /* Focus Empire service worker — fresh HTML, cached assets */
-const CACHE = 'focus-empire-v2';
+const CACHE = 'focus-empire-v3';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', e => {

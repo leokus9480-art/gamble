@@ -1,1683 +1,611 @@
-import { useState, useEffect, useRef } from 'react';
-import { TrendingUp, Package, Coins, Cherry, Target, RotateCcw, Trophy, DollarSign, Dice5, Spade, Banknote, AlertCircle } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Timer</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-const STARTING_CASH = 1000;
-const LOAN_INTEREST = 0.15; // 15% interest
-
-export default function LuckyStreak() {
-  const [balance, setBalance] = useState(STARTING_CASH);
-  const [allTimeHigh, setAllTimeHigh] = useState(STARTING_CASH);
-  const [totalWon, setTotalWon] = useState(0);
-  const [totalLost, setTotalLost] = useState(0);
-  const [loan, setLoan] = useState(0); // current loan balance
-  const [loanCount, setLoanCount] = useState(0); // number of loans taken
-  const [mode, setMode] = useState('menu');
-  const [loaded, setLoaded] = useState(false);
-  const [showLoanModal, setShowLoanModal] = useState(false);
-  const [notification, setNotification] = useState(null);
-
-  // Load from storage
-  useEffect(() => {
-    (async () => {
-      try {
-        const result = await window.storage.get('game-state');
-        if (result?.value) {
-          const state = JSON.parse(result.value);
-          setBalance(state.balance ?? STARTING_CASH);
-          setAllTimeHigh(state.allTimeHigh ?? STARTING_CASH);
-          setTotalWon(state.totalWon ?? 0);
-          setTotalLost(state.totalLost ?? 0);
-          setLoan(state.loan ?? 0);
-          setLoanCount(state.loanCount ?? 0);
-        }
-      } catch (e) {}
-      setLoaded(true);
-    })();
-  }, []);
-
-  // Save to storage
-  useEffect(() => {
-    if (!loaded) return;
-    (async () => {
-      try {
-        await window.storage.set('game-state', JSON.stringify({
-          balance, allTimeHigh, totalWon, totalLost, loan, loanCount
-        }));
-      } catch (e) {}
-    })();
-  }, [balance, allTimeHigh, totalWon, totalLost, loan, loanCount, loaded]);
-
-  const showNotif = (text, type = 'info') => {
-    setNotification({ text, type });
-    setTimeout(() => setNotification(null), 3000);
-  };
-
-  const updateBalance = (newBalance, change) => {
-    let finalBalance = newBalance;
-    // Auto-repay loan from winnings
-    if (change > 0 && loan > 0) {
-      const repayAmount = Math.min(change * 0.2, loan, finalBalance);
-      if (repayAmount > 0) {
-        finalBalance -= repayAmount;
-        setLoan(l => Math.max(0, l - repayAmount));
-        showNotif(`Auto-repaid $${repayAmount.toFixed(2)} on loan`, 'info');
-      }
+    body {
+      background: #000;
+      min-height: 100dvh;
+      overflow: hidden;
+      font-family: 'SF Pro Rounded', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+      -webkit-user-select: none;
     }
-    setBalance(finalBalance);
-    if (finalBalance > allTimeHigh) setAllTimeHigh(finalBalance);
-    if (change > 0) setTotalWon(t => t + change);
-    else if (change < 0) setTotalLost(t => t + Math.abs(change));
-  };
 
-  const takeLoan = (amount) => {
-    const totalOwed = amount * (1 + LOAN_INTEREST);
-    setBalance(b => b + amount);
-    setLoan(l => l + totalOwed);
-    setLoanCount(c => c + 1);
-    setShowLoanModal(false);
-    showNotif(`Loan approved! +$${amount} (owe $${totalOwed.toFixed(2)})`, 'success');
-  };
+    #root { width: 100%; height: 100dvh; }
 
-  const repayLoan = (amount) => {
-    const repay = Math.min(amount, loan, balance);
-    setBalance(b => b - repay);
-    setLoan(l => Math.max(0, l - repay));
-    showNotif(`Repaid $${repay.toFixed(2)}`, 'success');
-  };
-
-  const resetGame = () => {
-    if (confirm('Reset balance to $1,000? Your stats will be kept.')) {
-      setBalance(STARTING_CASH);
-      setLoan(0);
+    @keyframes pulse-ring {
+      0%   { transform: scale(1);    opacity: 0.8; }
+      50%  { transform: scale(1.04); opacity: 0.4; }
+      100% { transform: scale(1);    opacity: 0.8; }
     }
-  };
-
-  const fullReset = () => {
-    if (confirm('Wipe ALL progress including stats and high score?')) {
-      setBalance(STARTING_CASH);
-      setAllTimeHigh(STARTING_CASH);
-      setTotalWon(0);
-      setTotalLost(0);
-      setLoan(0);
-      setLoanCount(0);
+    @keyframes slide-up {
+      from { transform: translateY(20px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
     }
-  };
+    @keyframes fade-in {
+      from { opacity: 0; transform: scale(0.96); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    @keyframes glow-pulse {
+      0%, 100% { opacity: 0.5; }
+      50%       { opacity: 1;   }
+    }
+    @keyframes bounce-in {
+      0%   { transform: scale(0.85); opacity: 0; }
+      60%  { transform: scale(1.04); opacity: 1; }
+      80%  { transform: scale(0.98); }
+      100% { transform: scale(1); }
+    }
+    @keyframes mount {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
 
-  if (!loaded) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">
-        Loading...
-      </div>
-    );
-  }
+    .glass {
+      background: rgba(255,255,255,0.07);
+      backdrop-filter: blur(40px) saturate(180%);
+      -webkit-backdrop-filter: blur(40px) saturate(180%);
+      border: 1px solid rgba(255,255,255,0.13);
+      box-shadow:
+        0 2px 1px rgba(255,255,255,0.08) inset,
+        0 -1px 0px rgba(255,255,255,0.04) inset,
+        0 32px 64px rgba(0,0,0,0.6),
+        0 8px 24px rgba(0,0,0,0.4);
+    }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 text-white p-4">
-      <div className="max-w-5xl mx-auto">
-        {/* Notification */}
-        {notification && (
-          <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-2xl border animate-[slideIn_0.3s_ease-out] ${
-            notification.type === 'success' ? 'bg-emerald-900/90 border-emerald-500 text-emerald-100' :
-            notification.type === 'warning' ? 'bg-amber-900/90 border-amber-500 text-amber-100' :
-            'bg-slate-900/90 border-slate-500 text-slate-100'
-          }`}>
-            {notification.text}
-          </div>
-        )}
+    .glass-btn {
+      background: rgba(255,255,255,0.10);
+      backdrop-filter: blur(30px) saturate(180%);
+      -webkit-backdrop-filter: blur(30px) saturate(180%);
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.12) inset,
+        0 -1px 0 rgba(0,0,0,0.3) inset,
+        0 4px 16px rgba(0,0,0,0.4);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.12s cubic-bezier(0.34,1.56,0.64,1),
+                  background 0.15s ease,
+                  box-shadow 0.15s ease;
+    }
+    .glass-btn:active {
+      transform: scale(0.93) !important;
+      background: rgba(255,255,255,0.06);
+    }
 
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent text-center mb-4">
-            ⚡ LUCKY STREAK ⚡
-          </h1>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <StatCard icon={<DollarSign size={16} />} label="Balance" value={`$${balance.toFixed(2)}`} color="text-emerald-400" />
-            <StatCard icon={<Trophy size={16} />} label="High Score" value={`$${allTimeHigh.toFixed(2)}`} color="text-yellow-400" />
-            <StatCard icon={<TrendingUp size={16} />} label="Won" value={`$${totalWon.toFixed(2)}`} color="text-cyan-400" />
-            <StatCard icon={<TrendingUp size={16} className="rotate-180" />} label="Lost" value={`$${totalLost.toFixed(2)}`} color="text-rose-400" />
-            <StatCard icon={<Banknote size={16} />} label="Loan" value={loan > 0 ? `$${loan.toFixed(2)}` : 'None'} color={loan > 0 ? 'text-amber-400' : 'text-slate-500'} />
-          </div>
-        </div>
+    .tab-btn {
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      border: none;
+      transition: background 0.2s ease, box-shadow 0.2s ease;
+    }
+    .tab-btn:active { transform: scale(0.9); }
 
-        {/* Game Area */}
-        <div className="bg-slate-900/60 backdrop-blur rounded-2xl border border-purple-500/30 p-6 shadow-2xl">
-          {mode === 'menu' && <Menu setMode={setMode} balance={balance} />}
-          {mode === 'crash' && <Crash balance={balance} updateBalance={updateBalance} onBack={() => setMode('menu')} />}
-          {mode === 'case' && <CaseOpening balance={balance} updateBalance={updateBalance} onBack={() => setMode('menu')} />}
-          {mode === 'coin' && <CoinFlip balance={balance} updateBalance={updateBalance} onBack={() => setMode('menu')} />}
-          {mode === 'slots' && <Slots balance={balance} updateBalance={updateBalance} onBack={() => setMode('menu')} />}
-          {mode === 'roulette' && <Roulette balance={balance} updateBalance={updateBalance} onBack={() => setMode('menu')} />}
-          {mode === 'dice' && <Dice balance={balance} updateBalance={updateBalance} onBack={() => setMode('menu')} />}
-          {mode === 'mines' && <Mines balance={balance} updateBalance={updateBalance} onBack={() => setMode('menu')} />}
-          {mode === 'plinko' && <Plinko balance={balance} updateBalance={updateBalance} onBack={() => setMode('menu')} />}
-          {mode === 'blackjack' && <Blackjack balance={balance} updateBalance={updateBalance} onBack={() => setMode('menu')} />}
-          {mode === 'wheel' && <WheelGame balance={balance} updateBalance={updateBalance} onBack={() => setMode('menu')} />}
-        </div>
+    input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { display: none; }
 
-        {/* Footer Controls */}
-        <div className="mt-4 flex gap-2 justify-center flex-wrap">
-          <button onClick={() => setShowLoanModal(true)} className="px-4 py-2 bg-amber-700 hover:bg-amber-600 rounded-lg font-semibold flex items-center gap-2">
-            <Banknote size={16} /> Loans {loan > 0 && `($${loan.toFixed(2)} owed)`}
-          </button>
-          <button onClick={resetGame} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm flex items-center gap-2">
-            <RotateCcw size={14} /> Reset Balance
-          </button>
-          <button onClick={fullReset} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm">
-            Wipe All Progress
-          </button>
-        </div>
+    .digit-input {
+      background: rgba(255,255,255,0.08);
+      border: 1.5px solid rgba(255,255,255,0.14);
+      border-radius: 16px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 38px;
+      font-weight: 300;
+      text-align: center;
+      outline: none;
+      width: 80px;
+      padding: 10px 0;
+      transition: all 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .digit-input:focus {
+      background: rgba(255,255,255,0.13);
+      border-color: rgba(10,132,255,0.8);
+      box-shadow: 0 0 0 3px rgba(10,132,255,0.22);
+    }
 
-        {/* Loan Modal */}
-        {showLoanModal && (
-          <LoanModal
-            balance={balance}
-            loan={loan}
-            loanCount={loanCount}
-            onTakeLoan={takeLoan}
-            onRepay={repayLoan}
-            onClose={() => setShowLoanModal(false)}
+    ::-webkit-scrollbar { display: none; }
+    * { -webkit-tap-highlight-color: transparent; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    const SF = `'SF Pro Rounded','SF Pro Display',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif`;
+
+    const pad = n => String(Math.max(0, Math.floor(n))).padStart(2, '0');
+
+    function formatTime(ms, showMs = false) {
+      const total = Math.max(0, ms);
+      const h = Math.floor(total / 3600000);
+      const m = Math.floor((total % 3600000) / 60000);
+      const s = Math.floor((total % 60000) / 1000);
+      const cs = Math.floor((total % 1000) / 10);
+      return { h: pad(h), m: pad(m), s: pad(s), cs: pad(cs), hasH: h > 0 };
+    }
+
+    // ── Background ──────────────────────────────────────────────────────────
+    function Background({ mode, active }) {
+      const c1 = mode === 'timer'
+        ? (active ? 'rgba(10,132,255,0.38)' : 'rgba(10,132,255,0.18)')
+        : (active ? 'rgba(52,199,89,0.32)'  : 'rgba(52,199,89,0.14)');
+      const c2 = mode === 'timer' ? 'rgba(94,92,230,0.22)' : 'rgba(48,209,88,0.18)';
+      return (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 0,
+          background: `
+            radial-gradient(ellipse 70% 55% at 30% 20%, ${c1}, transparent 60%),
+            radial-gradient(ellipse 60% 50% at 75% 80%, ${c2}, transparent 60%),
+            radial-gradient(ellipse 50% 60% at 80% 10%, rgba(255,55,95,0.10), transparent 55%),
+            #050508
+          `,
+          transition: 'background 1.2s ease',
+        }} />
+      );
+    }
+
+    // ── Progress Ring ───────────────────────────────────────────────────────
+    function ProgressRing({ progress, size = 280, isRunning, mode, finished }) {
+      const stroke = 3.5;
+      const r = (size - stroke * 2) / 2;
+      const circ = 2 * Math.PI * r;
+      const dash = circ * Math.max(0, Math.min(1, 1 - progress));
+      const arcColor = finished ? '#ff453a' : mode === 'timer' ? '#0a84ff' : '#34c759';
+      const glow = finished ? 'rgba(255,69,58,0.5)' : mode === 'timer' ? 'rgba(10,132,255,0.5)' : 'rgba(52,199,89,0.5)';
+      const endColor = finished ? '#ff6961' : mode === 'timer' ? '#5e5ce6' : '#30d158';
+
+      const angle = (2 * Math.PI * (1 - progress)) - Math.PI / 2;
+      const dotX = size / 2 + r * Math.cos(angle);
+      const dotY = size / 2 + r * Math.sin(angle);
+
+      return (
+        <svg width={size} height={size} style={{
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%,-50%) rotate(-90deg)',
+          filter: isRunning ? `drop-shadow(0 0 10px ${glow})` : 'none',
+          transition: 'filter 0.5s ease',
+        }}>
+          <defs>
+            <linearGradient id="ag" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={arcColor} />
+              <stop offset="100%" stopColor={endColor} stopOpacity="0.8" />
+            </linearGradient>
+          </defs>
+          <circle cx={size/2} cy={size/2} r={r} fill="none"
+            stroke="rgba(255,255,255,0.07)" strokeWidth={stroke} />
+          <circle cx={size/2} cy={size/2} r={r} fill="none"
+            stroke="url(#ag)" strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={circ}
+            strokeDashoffset={dash}
+            style={{ transition: isRunning ? 'stroke-dashoffset 0.25s linear' : 'stroke-dashoffset 0.5s ease' }}
           />
-        )}
-      </div>
-
-      <style>{`
-        @keyframes slideIn {
-          from { transform: translateX(100%); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-function LoanModal({ balance, loan, loanCount, onTakeLoan, onRepay, onClose }) {
-  const [customAmount, setCustomAmount] = useState(500);
-  const [repayAmount, setRepayAmount] = useState(Math.min(loan, balance));
-  const maxLoan = 5000 + (loanCount * 1000); // bigger loans available as you take more
-  const interestRate = LOAN_INTEREST * 100;
-
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur z-40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-900 rounded-2xl border border-amber-500/50 max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
-        <h2 className="text-2xl font-bold mb-2 flex items-center gap-2"><Banknote className="text-amber-400" /> Lucky Loans Inc.</h2>
-        <p className="text-slate-400 text-sm mb-4">Borrow now, pay later. {interestRate}% interest. 20% of any winnings auto-repays.</p>
-
-        {loan > 0 && (
-          <div className="bg-amber-950/40 border border-amber-500/30 rounded-lg p-3 mb-4">
-            <div className="flex items-center gap-2 text-amber-300 mb-2">
-              <AlertCircle size={16} /> You owe ${loan.toFixed(2)}
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                value={repayAmount}
-                onChange={e => setRepayAmount(Math.max(0, Math.min(loan, balance, Number(e.target.value) || 0)))}
-                className="flex-1 bg-slate-800 rounded px-2 py-1 border border-slate-700"
-                max={Math.min(loan, balance)}
-              />
-              <button
-                onClick={() => onRepay(repayAmount)}
-                disabled={repayAmount < 1 || balance < repayAmount}
-                className="px-4 py-1 bg-emerald-600 hover:bg-emerald-500 rounded font-semibold disabled:opacity-50"
-              >
-                Repay
-              </button>
-            </div>
-            <div className="flex gap-1 mt-2">
-              <button onClick={() => setRepayAmount(Math.min(loan, balance) / 4)} className="text-xs px-2 py-1 bg-slate-800 rounded">¼</button>
-              <button onClick={() => setRepayAmount(Math.min(loan, balance) / 2)} className="text-xs px-2 py-1 bg-slate-800 rounded">½</button>
-              <button onClick={() => setRepayAmount(Math.min(loan, balance))} className="text-xs px-2 py-1 bg-slate-800 rounded">All possible</button>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-2 mb-4">
-          <div className="text-sm text-slate-300">Borrow:</div>
-          {[500, 1000, 2500, 5000].filter(a => a <= maxLoan).map(amount => (
-            <button
-              key={amount}
-              onClick={() => onTakeLoan(amount)}
-              className="w-full bg-slate-800 hover:bg-amber-900/50 rounded-lg p-3 flex justify-between items-center border border-slate-700 hover:border-amber-500/50 transition-colors"
-            >
-              <div className="text-left">
-                <div className="font-bold">${amount}</div>
-                <div className="text-xs text-slate-400">Repay ${(amount * (1 + LOAN_INTEREST)).toFixed(2)}</div>
-              </div>
-              <div className="text-amber-400">→</div>
-            </button>
-          ))}
-          <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
-            <div className="text-xs text-slate-400 mb-2">Custom amount (max ${maxLoan})</div>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                value={customAmount}
-                onChange={e => setCustomAmount(Math.max(100, Math.min(maxLoan, Number(e.target.value) || 0)))}
-                className="flex-1 bg-slate-900 rounded px-2 py-1 border border-slate-700"
-                min="100"
-                max={maxLoan}
-              />
-              <button onClick={() => onTakeLoan(customAmount)} className="px-3 py-1 bg-amber-600 hover:bg-amber-500 rounded font-semibold">Borrow</button>
-            </div>
-          </div>
-        </div>
-
-        <button onClick={onClose} className="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-lg">Close</button>
-      </div>
-    </div>
-  );
-}
-
-function StatCard({ icon, label, value, color }) {
-  return (
-    <div className="bg-slate-900/60 backdrop-blur rounded-xl border border-slate-700/50 p-3">
-      <div className="flex items-center gap-1.5 text-slate-400 text-xs mb-1">
-        {icon} {label}
-      </div>
-      <div className={`font-bold text-base ${color}`}>{value}</div>
-    </div>
-  );
-}
-
-function Menu({ setMode, balance }) {
-  const games = [
-    { id: 'crash', name: 'Crash', desc: 'Cash out before the multiplier crashes!', icon: <TrendingUp size={28} />, color: 'from-pink-500 to-rose-500' },
-    { id: 'case', name: 'Case Opening', desc: 'Open animated cases for big rewards.', icon: <Package size={28} />, color: 'from-cyan-500 to-blue-500' },
-    { id: 'coin', name: 'Coin Flip', desc: 'Heads or tails — double or nothing.', icon: <Coins size={28} />, color: 'from-yellow-500 to-amber-500' },
-    { id: 'slots', name: 'Slots', desc: 'Spin three reels. Match for huge wins.', icon: <Cherry size={28} />, color: 'from-purple-500 to-fuchsia-500' },
-    { id: 'roulette', name: 'Roulette', desc: 'Bet on color, parity, or a number.', icon: <Target size={28} />, color: 'from-emerald-500 to-teal-500' },
-    { id: 'dice', name: 'Dice', desc: 'Roll over or under your target.', icon: <Dice5 size={28} />, color: 'from-orange-500 to-red-500' },
-    { id: 'mines', name: 'Mines', desc: 'Avoid bombs. Cash out when ready.', icon: <span className="text-3xl">💣</span>, color: 'from-red-500 to-rose-600' },
-    { id: 'plinko', name: 'Plinko', desc: 'Drop the ball, watch it bounce.', icon: <span className="text-3xl">⚪</span>, color: 'from-violet-500 to-purple-500' },
-    { id: 'blackjack', name: 'Blackjack', desc: 'Beat the dealer. Get 21 or close.', icon: <Spade size={28} />, color: 'from-slate-400 to-slate-600' },
-    { id: 'wheel', name: 'Wheel of Fortune', desc: 'Spin the wheel for huge multipliers.', icon: <span className="text-3xl">🎡</span>, color: 'from-fuchsia-500 to-pink-500' },
-  ];
-
-  return (
-    <div>
-      <h2 className="text-2xl font-bold mb-1 text-center">Pick Your Game</h2>
-      <p className="text-slate-400 text-center mb-6 text-sm">10 ways to win big — or lose it all</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {games.map(g => (
-          <button
-            key={g.id}
-            onClick={() => setMode(g.id)}
-            disabled={balance < 1}
-            className="group relative overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/40 p-4 text-left hover:border-purple-400/50 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-          >
-            <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 bg-gradient-to-br ${g.color} transition-opacity`}></div>
-            <div className={`inline-flex p-2 rounded-lg bg-gradient-to-br ${g.color} mb-2`}>
-              {g.icon}
-            </div>
-            <h3 className="font-bold text-base mb-0.5">{g.name}</h3>
-            <p className="text-slate-400 text-xs">{g.desc}</p>
-          </button>
-        ))}
-      </div>
-      {balance < 1 && (
-        <div className="mt-4 p-4 bg-amber-950/40 border border-amber-500/30 rounded-lg text-center">
-          <div className="text-amber-300 mb-2">💸 You're out of cash!</div>
-          <div className="text-sm text-slate-400">Take a loan or reset to keep playing.</div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function BackBar({ onBack, title }) {
-  return (
-    <div className="flex items-center justify-between mb-4">
-      <button onClick={onBack} className="text-slate-400 hover:text-white text-sm">← Back to menu</button>
-      <h2 className="text-xl font-bold">{title}</h2>
-      <div className="w-20"></div>
-    </div>
-  );
-}
-
-function BetInput({ bet, setBet, balance, disabled }) {
-  return (
-    <div className="bg-slate-950/50 rounded-lg p-3 mb-4">
-      <label className="text-slate-400 text-xs mb-2 block">Your bet</label>
-      <div className="flex gap-2 items-center flex-wrap">
-        <span className="text-emerald-400 font-bold">$</span>
-        <input
-          type="number"
-          value={bet}
-          onChange={e => setBet(Math.max(1, Math.min(balance, Number(e.target.value) || 0)))}
-          disabled={disabled}
-          className="bg-slate-800 rounded px-2 py-1 w-24 text-white border border-slate-700 focus:border-purple-400 outline-none disabled:opacity-50"
-          min="1"
-          max={balance}
-        />
-        <div className="flex gap-1 flex-wrap">
-          {[10, 50, 100, 500].map(v => (
-            <button key={v} onClick={() => setBet(Math.min(balance, v))} disabled={disabled} className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs disabled:opacity-50">${v}</button>
-          ))}
-          <button onClick={() => setBet(Math.floor(balance / 2))} disabled={disabled} className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs disabled:opacity-50">½</button>
-          <button onClick={() => setBet(Math.floor(balance))} disabled={disabled} className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs disabled:opacity-50">Max</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// CRASH GAME — friendlier
-function Crash({ balance, updateBalance, onBack }) {
-  const [bet, setBet] = useState(10);
-  const [multiplier, setMultiplier] = useState(1.00);
-  const [state, setState] = useState('idle');
-  const [crashPoint, setCrashPoint] = useState(0);
-  const [cashedAt, setCashedAt] = useState(0);
-  const [history, setHistory] = useState([]);
-  const [autoCashOut, setAutoCashOut] = useState(0); // 0 = disabled
-  const intervalRef = useRef(null);
-
-  const generateCrashPoint = () => {
-    const r = Math.random();
-    if (r < 0.02) return 1.00; // only 2% instant crash
-    // Friendlier distribution — most crashes are 1.5x+
-    const value = 1 + Math.pow(1 / (1 - r), 1.4);
-    return Math.max(1.05, Math.min(value, 100));
-  };
-
-  const start = () => {
-    if (bet > balance || bet < 1) return;
-    updateBalance(balance - bet, -bet);
-    const cp = generateCrashPoint();
-    setCrashPoint(cp);
-    setMultiplier(1.00);
-    setCashedAt(0);
-    setState('playing');
-
-    let m = 1.00;
-    const startTime = Date.now();
-    intervalRef.current = setInterval(() => {
-      const elapsed = (Date.now() - startTime) / 1000;
-      m = Math.pow(1.05, elapsed * 2);
-
-      // Auto cash out
-      if (autoCashOut > 0 && m >= autoCashOut && m < cp) {
-        clearInterval(intervalRef.current);
-        const winnings = bet * autoCashOut;
-        updateBalance(balance - bet + winnings, winnings - bet);
-        setCashedAt(autoCashOut);
-        setMultiplier(autoCashOut);
-        setState('cashed');
-        setHistory(h => [autoCashOut, ...h].slice(0, 10));
-        return;
-      }
-
-      if (m >= cp) {
-        clearInterval(intervalRef.current);
-        setMultiplier(cp);
-        setState('crashed');
-        setHistory(h => [cp, ...h].slice(0, 10));
-      } else {
-        setMultiplier(m);
-      }
-    }, 50);
-  };
-
-  const cashOut = () => {
-    if (state !== 'playing') return;
-    clearInterval(intervalRef.current);
-    const winnings = bet * multiplier;
-    updateBalance(balance - bet + winnings, winnings - bet);
-    setCashedAt(multiplier);
-    setState('cashed');
-    setHistory(h => [multiplier, ...h].slice(0, 10));
-  };
-
-  const reset = () => {
-    setState('idle');
-    setMultiplier(1.00);
-  };
-
-  useEffect(() => () => clearInterval(intervalRef.current), []);
-
-  const color = state === 'crashed' ? 'text-rose-500' : state === 'cashed' ? 'text-emerald-400' : multiplier > 5 ? 'text-yellow-400' : multiplier > 2 ? 'text-cyan-400' : 'text-white';
-
-  return (
-    <div>
-      <BackBar onBack={onBack} title="Crash" />
-      <div className="bg-gradient-to-b from-slate-950 to-purple-950/30 rounded-xl p-8 mb-4 border border-purple-500/20 relative overflow-hidden">
-        {state === 'playing' && (
-          <div className="absolute inset-0 opacity-30" style={{
-            background: `radial-gradient(circle at 50% 100%, ${multiplier > 5 ? 'rgba(250,204,21,0.4)' : 'rgba(168,85,247,0.4)'}, transparent 70%)`
-          }}></div>
-        )}
-        <div className="text-center relative">
-          <div className={`text-7xl md:text-8xl font-bold tabular-nums transition-colors ${color}`} style={{ textShadow: state === 'playing' && multiplier > 3 ? '0 0 30px currentColor' : 'none' }}>
-            {multiplier.toFixed(2)}x
-          </div>
-          {state === 'crashed' && <div className="text-rose-500 font-bold mt-2 text-xl">💥 CRASHED 💥</div>}
-          {state === 'cashed' && <div className="text-emerald-400 font-bold mt-2 text-xl">✓ Cashed at {cashedAt.toFixed(2)}x — won ${(bet * cashedAt).toFixed(2)}</div>}
-          {state === 'playing' && <div className="text-slate-400 mt-2">Cash out before it crashes!</div>}
-          {state === 'idle' && <div className="text-slate-400 mt-2">Place your bet and start</div>}
-        </div>
-      </div>
-
-      <BetInput bet={bet} setBet={setBet} balance={balance} disabled={state === 'playing'} />
-
-      <div className="bg-slate-950/50 rounded-lg p-3 mb-4">
-        <label className="text-slate-400 text-xs mb-2 block">Auto cash-out at multiplier (0 = manual)</label>
-        <div className="flex gap-2 items-center">
-          <input
-            type="number"
-            value={autoCashOut}
-            onChange={e => setAutoCashOut(Math.max(0, Number(e.target.value) || 0))}
-            disabled={state === 'playing'}
-            step="0.1"
-            className="bg-slate-800 rounded px-2 py-1 w-24 border border-slate-700"
-          />
-          <span className="text-slate-500 text-xs">x</span>
-          {[1.5, 2, 5, 10].map(v => (
-            <button key={v} onClick={() => setAutoCashOut(v)} disabled={state === 'playing'} className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs">{v}x</button>
-          ))}
-          <button onClick={() => setAutoCashOut(0)} disabled={state === 'playing'} className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs">Off</button>
-        </div>
-      </div>
-
-      <div className="flex gap-2">
-        {(state === 'idle' || state === 'crashed' || state === 'cashed') && (
-          <button onClick={state === 'idle' ? start : reset} disabled={balance < 1} className="flex-1 py-3 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 rounded-lg font-bold disabled:opacity-50">
-            {state === 'idle' ? `Bet $${bet}` : 'Play Again'}
-          </button>
-        )}
-        {state === 'playing' && (
-          <button onClick={cashOut} className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 rounded-lg font-bold animate-pulse">
-            Cash Out @ {multiplier.toFixed(2)}x (${(bet * multiplier).toFixed(2)})
-          </button>
-        )}
-      </div>
-
-      {history.length > 0 && (
-        <div className="mt-4">
-          <div className="text-xs text-slate-400 mb-2">Recent rounds</div>
-          <div className="flex gap-1 flex-wrap">
-            {history.map((h, i) => (
-              <div key={i} className={`px-2 py-1 rounded text-xs font-bold ${h < 1.5 ? 'bg-rose-900/50 text-rose-300' : h < 3 ? 'bg-cyan-900/50 text-cyan-300' : h < 10 ? 'bg-yellow-900/50 text-yellow-300' : 'bg-purple-900/50 text-purple-300'}`}>
-                {h.toFixed(2)}x
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// CASE OPENING — animated, friendlier rewards
-function CaseOpening({ balance, updateBalance, onBack }) {
-  const cases = [
-    {
-      name: 'Starter Case', cost: 25, emoji: '📦', glow: 'cyan',
-      items: [
-        { name: 'Coin', value: 10, rarity: 'common', color: 'text-slate-300', bg: 'bg-slate-700', weight: 35, emoji: '🪙' },
-        { name: 'Pouch', value: 30, rarity: 'common', color: 'text-slate-300', bg: 'bg-slate-700', weight: 30, emoji: '👝' },
-        { name: 'Silver', value: 60, rarity: 'uncommon', color: 'text-cyan-300', bg: 'bg-cyan-900/50', weight: 20, emoji: '🥈' },
-        { name: 'Gold', value: 120, rarity: 'rare', color: 'text-purple-300', bg: 'bg-purple-900/50', weight: 10, emoji: '🥇' },
-        { name: 'Diamond', value: 300, rarity: 'epic', color: 'text-pink-300', bg: 'bg-pink-900/50', weight: 4, emoji: '💎' },
-        { name: 'JACKPOT', value: 1500, rarity: 'legendary', color: 'text-yellow-300', bg: 'bg-yellow-900/50', weight: 1, emoji: '🏆' },
-      ]
-    },
-    {
-      name: 'Premium Case', cost: 100, emoji: '🎁', glow: 'purple',
-      items: [
-        { name: 'Bronze', value: 50, rarity: 'common', color: 'text-slate-300', bg: 'bg-slate-700', weight: 30, emoji: '🥉' },
-        { name: 'Pearl', value: 150, rarity: 'common', color: 'text-slate-300', bg: 'bg-slate-700', weight: 28, emoji: '🦪' },
-        { name: 'Ruby', value: 300, rarity: 'uncommon', color: 'text-cyan-300', bg: 'bg-cyan-900/50', weight: 22, emoji: '♦️' },
-        { name: 'Emerald', value: 600, rarity: 'rare', color: 'text-purple-300', bg: 'bg-purple-900/50', weight: 14, emoji: '🟢' },
-        { name: 'Crown', value: 1500, rarity: 'epic', color: 'text-pink-300', bg: 'bg-pink-900/50', weight: 5, emoji: '👑' },
-        { name: 'MEGA WIN', value: 7500, rarity: 'legendary', color: 'text-yellow-300', bg: 'bg-yellow-900/50', weight: 1, emoji: '💰' },
-      ]
-    },
-    {
-      name: 'High Roller', cost: 500, emoji: '💼', glow: 'yellow',
-      items: [
-        { name: 'Trinket', value: 250, rarity: 'common', color: 'text-slate-300', bg: 'bg-slate-700', weight: 30, emoji: '🎲' },
-        { name: 'Antique', value: 700, rarity: 'common', color: 'text-slate-300', bg: 'bg-slate-700', weight: 28, emoji: '🏺' },
-        { name: 'Sapphire', value: 1400, rarity: 'uncommon', color: 'text-cyan-300', bg: 'bg-cyan-900/50', weight: 22, emoji: '🔷' },
-        { name: 'Sword', value: 2800, rarity: 'rare', color: 'text-purple-300', bg: 'bg-purple-900/50', weight: 13, emoji: '⚔️' },
-        { name: 'Dragon Egg', value: 8000, rarity: 'epic', color: 'text-pink-300', bg: 'bg-pink-900/50', weight: 5, emoji: '🥚' },
-        { name: 'GODLIKE', value: 50000, rarity: 'legendary', color: 'text-yellow-300', bg: 'bg-yellow-900/50', weight: 2, emoji: '✨' },
-      ]
-    },
-  ];
-
-  const [opening, setOpening] = useState(false);
-  const [reel, setReel] = useState([]);
-  const [result, setResult] = useState(null);
-  const [selectedCase, setSelectedCase] = useState(0);
-  const [showResult, setShowResult] = useState(false);
-
-  const pickItem = (items) => {
-    const total = items.reduce((s, i) => s + i.weight, 0);
-    let r = Math.random() * total;
-    for (const item of items) {
-      r -= item.weight;
-      if (r <= 0) return item;
-    }
-    return items[0];
-  };
-
-  const open = () => {
-    const c = cases[selectedCase];
-    if (balance < c.cost || opening) return;
-    updateBalance(balance - c.cost, -c.cost);
-
-    const winner = pickItem(c.items);
-    const newReel = [];
-    for (let i = 0; i < 50; i++) {
-      newReel.push(pickItem(c.items));
-    }
-    newReel[42] = winner;
-    setReel(newReel);
-    setOpening(true);
-    setResult(null);
-    setShowResult(false);
-
-    setTimeout(() => {
-      setResult(winner);
-      updateBalance(balance - c.cost + winner.value, winner.value - c.cost);
-      setOpening(false);
-      setShowResult(true);
-    }, 5000);
-  };
-
-  const c = cases[selectedCase];
-  const itemWidth = 96;
-  const targetIndex = 42;
-  const reelDistance = -(targetIndex * itemWidth) + (itemWidth * 1.5);
-
-  return (
-    <div>
-      <BackBar onBack={onBack} title="Case Opening" />
-
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        {cases.map((cs, i) => (
-          <button
-            key={i}
-            onClick={() => !opening && setSelectedCase(i)}
-            className={`p-3 rounded-lg border transition-all ${selectedCase === i ? 'border-cyan-400 bg-cyan-950/30 scale-105' : 'border-slate-700 bg-slate-900/40 hover:border-slate-500'} ${opening ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <div className="text-3xl mb-1">{cs.emoji}</div>
-            <div className="text-sm font-semibold">{cs.name}</div>
-            <div className="text-xs text-emerald-400">${cs.cost}</div>
-          </button>
-        ))}
-      </div>
-
-      {/* Reel */}
-      <div className="relative bg-gradient-to-b from-slate-950 to-slate-900 rounded-xl p-4 mb-4 border-2 border-cyan-500/30 overflow-hidden">
-        {/* Side gradients */}
-        <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-slate-950 to-transparent z-10 pointer-events-none"></div>
-        <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-slate-950 to-transparent z-10 pointer-events-none"></div>
-        {/* Center indicator */}
-        <div className="absolute top-2 bottom-2 left-1/2 w-1 bg-yellow-400 z-20 -translate-x-1/2 shadow-[0_0_15px_rgba(250,204,21,0.9)] rounded-full"></div>
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 text-yellow-400">▼</div>
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 z-20 text-yellow-400">▲</div>
-
-        <div className="h-32 flex items-center overflow-hidden">
-          {opening ? (
-            <div
-              className="flex gap-0 will-change-transform"
-              style={{
-                animation: 'reelSpin 5s cubic-bezier(0.08, 0.4, 0.15, 1) forwards',
-                '--reel-end': `${reelDistance}px`
-              }}
-            >
-              {reel.map((item, i) => (
-                <ReelItem key={i} item={item} />
-              ))}
-            </div>
-          ) : showResult && result ? (
-            <div className="w-full text-center animate-[popIn_0.5s_ease-out]">
-              <div className={`inline-block px-8 py-5 rounded-xl border-2 ${result.color.replace('text-', 'border-')}/60 ${result.bg} relative`}>
-                {result.rarity === 'legendary' && (
-                  <div className="absolute inset-0 rounded-xl animate-pulse" style={{ boxShadow: '0 0 40px rgba(250,204,21,0.6)' }}></div>
-                )}
-                <div className="text-5xl mb-2">{result.emoji}</div>
-                <div className="text-xs uppercase tracking-wider mb-1 opacity-70">{result.rarity}</div>
-                <div className={`font-bold text-xl ${result.color}`}>{result.name}</div>
-                <div className="text-emerald-400 text-2xl font-bold mt-2">${result.value}</div>
-                <div className={`text-sm mt-2 font-semibold ${result.value >= c.cost ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {result.value >= c.cost ? `🎉 Profit: +$${(result.value - c.cost).toFixed(2)}` : `Loss: -$${(c.cost - result.value).toFixed(2)}`}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="w-full text-center text-slate-500">
-              <div className="text-6xl mb-2">{c.emoji}</div>
-              <div>Open the {c.name} for a chance at big rewards!</div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <button onClick={open} disabled={opening || balance < c.cost} className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 rounded-lg font-bold disabled:opacity-50 text-lg">
-        {opening ? '🎲 Opening...' : `Open ${c.name} ($${c.cost})`}
-      </button>
-
-      <div className="mt-4">
-        <div className="text-xs text-slate-400 mb-2">Possible drops</div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {c.items.map((item, i) => (
-            <div key={i} className={`${item.bg} rounded p-2 border ${item.color.replace('text-', 'border-')}/30 text-xs flex items-center justify-between`}>
-              <span className="flex items-center gap-1">
-                <span>{item.emoji}</span>
-                <span className={item.color}>{item.name}</span>
-              </span>
-              <span className="text-emerald-400">${item.value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes reelSpin {
-          from { transform: translateX(0); }
-          to { transform: translateX(var(--reel-end)); }
-        }
-        @keyframes popIn {
-          0% { transform: scale(0.5); opacity: 0; }
-          70% { transform: scale(1.1); }
-          100% { transform: scale(1); opacity: 1; }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-function ReelItem({ item }) {
-  return (
-    <div className={`flex-shrink-0 w-24 h-24 rounded-lg border-2 ${item.color.replace('text-', 'border-')}/40 ${item.bg} flex flex-col items-center justify-center px-1 mx-0.5`}>
-      <div className="text-3xl">{item.emoji}</div>
-      <div className={`text-xs font-bold text-center ${item.color} truncate w-full`}>{item.name}</div>
-    </div>
-  );
-}
-
-// COIN FLIP — friendlier (52% win rate)
-function CoinFlip({ balance, updateBalance, onBack }) {
-  const [bet, setBet] = useState(10);
-  const [flipping, setFlipping] = useState(false);
-  const [result, setResult] = useState(null);
-  const [choice, setChoice] = useState(null);
-  const [streak, setStreak] = useState(0);
-
-  const flip = (pick) => {
-    if (bet > balance || bet < 1 || flipping) return;
-    setChoice(pick);
-    setFlipping(true);
-    setResult(null);
-    updateBalance(balance - bet, -bet);
-
-    setTimeout(() => {
-      // 52% in your favor — friendly!
-      const flipResult = Math.random() < 0.52 ? pick : (pick === 'heads' ? 'tails' : 'heads');
-      setResult(flipResult);
-      setFlipping(false);
-      if (flipResult === pick) {
-        const winnings = bet * 2;
-        updateBalance(balance - bet + winnings, bet);
-        setStreak(s => s + 1);
-      } else {
-        setStreak(0);
-      }
-    }, 1500);
-  };
-
-  return (
-    <div>
-      <BackBar onBack={onBack} title="Coin Flip" />
-      <div className="bg-gradient-to-b from-slate-950 to-yellow-950/20 rounded-xl p-8 mb-4 border border-yellow-500/20 text-center">
-        <div className={`text-9xl mb-4 inline-block ${flipping ? 'animate-spin' : ''}`} style={{ animationDuration: '0.3s' }}>
-          {flipping ? '🪙' : result === 'heads' ? '🌝' : result === 'tails' ? '🌚' : '🪙'}
-        </div>
-        <div className="h-8">
-          {!flipping && result && (
-            <div className={`text-xl font-bold ${result === choice ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {result.toUpperCase()} — {result === choice ? `You won $${bet}!` : 'You lost'}
-            </div>
-          )}
-          {flipping && <div className="text-slate-400">Flipping...</div>}
-          {!flipping && !result && <div className="text-slate-400">Pick heads or tails</div>}
-        </div>
-        {streak >= 2 && !flipping && <div className="text-yellow-400 text-sm mt-2">🔥 {streak} win streak!</div>}
-      </div>
-
-      <BetInput bet={bet} setBet={setBet} balance={balance} disabled={flipping} />
-
-      <div className="grid grid-cols-2 gap-2">
-        <button onClick={() => flip('heads')} disabled={flipping || balance < 1} className="py-4 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 rounded-lg font-bold text-lg disabled:opacity-50">
-          🌝 Heads
-        </button>
-        <button onClick={() => flip('tails')} disabled={flipping || balance < 1} className="py-4 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 rounded-lg font-bold text-lg disabled:opacity-50">
-          🌚 Tails
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// SLOTS — more generous
-function Slots({ balance, updateBalance, onBack }) {
-  const symbols = [
-    { e: '🍒', name: 'Cherry', payout: 5, weight: 25 },
-    { e: '🍋', name: 'Lemon', payout: 8, weight: 22 },
-    { e: '🍇', name: 'Grape', payout: 12, weight: 18 },
-    { e: '🔔', name: 'Bell', payout: 20, weight: 14 },
-    { e: '⭐', name: 'Star', payout: 40, weight: 10 },
-    { e: '💎', name: 'Diamond', payout: 80, weight: 7 },
-    { e: '7️⃣', name: 'Seven', payout: 250, weight: 4 },
-  ];
-
-  const [bet, setBet] = useState(10);
-  const [reels, setReels] = useState(['🍒', '🍋', '🔔']);
-  const [spinning, setSpinning] = useState(false);
-  const [message, setMessage] = useState('');
-  const [reelStates, setReelStates] = useState([false, false, false]);
-  const [winFlash, setWinFlash] = useState(false);
-
-  const pickSymbol = () => {
-    const total = symbols.reduce((s, x) => s + x.weight, 0);
-    let r = Math.random() * total;
-    for (const sym of symbols) {
-      r -= sym.weight;
-      if (r <= 0) return sym;
-    }
-    return symbols[0];
-  };
-
-  const spin = () => {
-    if (bet > balance || bet < 1 || spinning) return;
-    updateBalance(balance - bet, -bet);
-    setSpinning(true);
-    setMessage('');
-    setWinFlash(false);
-    setReelStates([true, true, true]);
-
-    const final = [pickSymbol(), pickSymbol(), pickSymbol()];
-
-    const spinInterval = setInterval(() => {
-      setReels([pickSymbol().e, pickSymbol().e, pickSymbol().e]);
-    }, 80);
-
-    setTimeout(() => {
-      setReels(prev => [final[0].e, prev[1], prev[2]]);
-      setReelStates([false, true, true]);
-    }, 800);
-    setTimeout(() => {
-      setReels(prev => [final[0].e, final[1].e, prev[2]]);
-      setReelStates([false, false, true]);
-    }, 1400);
-    setTimeout(() => {
-      clearInterval(spinInterval);
-      setReels([final[0].e, final[1].e, final[2].e]);
-      setReelStates([false, false, false]);
-
-      let payout = 0;
-      let msg = '';
-      if (final[0].name === final[1].name && final[1].name === final[2].name) {
-        payout = bet * final[0].payout;
-        msg = `🎉 TRIPLE ${final[0].name.toUpperCase()}! Won $${payout.toFixed(2)}`;
-        if (final[0].name === 'Seven') msg = `🎰 JACKPOT! 💰 $${payout.toFixed(2)} 💰`;
-        setWinFlash(true);
-      } else if (final[0].name === final[1].name || final[1].name === final[2].name || final[0].name === final[2].name) {
-        const matched = final[0].name === final[1].name ? final[0] : final[1].name === final[2].name ? final[1] : final[0];
-        payout = bet * (matched.payout * 0.5); // friendlier two-of-a-kind
-        msg = `Two ${matched.name}s — Won $${payout.toFixed(2)}`;
-      } else {
-        msg = 'No match — try again!';
-      }
-      if (payout > 0) updateBalance(balance - bet + payout, payout - bet);
-      setMessage(msg);
-      setSpinning(false);
-      setTimeout(() => setWinFlash(false), 1500);
-    }, 2000);
-  };
-
-  return (
-    <div>
-      <BackBar onBack={onBack} title="Slots" />
-      <div className={`bg-gradient-to-b from-purple-950 to-slate-950 rounded-xl p-6 mb-4 border-4 transition-all ${winFlash ? 'border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.6)]' : 'border-purple-500/30'}`}>
-        <div className="grid grid-cols-3 gap-3 mb-4">
-          {reels.map((r, i) => (
-            <div key={i} className={`bg-slate-950 rounded-lg h-32 flex items-center justify-center text-7xl border-2 ${winFlash ? 'border-yellow-400' : 'border-yellow-500/30'} ${reelStates[i] ? 'animate-pulse' : ''}`}>
-              <span className={reelStates[i] ? 'blur-sm' : ''}>{r}</span>
-            </div>
-          ))}
-        </div>
-        <div className="text-center h-6 font-bold">
-          {message && <span className={message.includes('Won') || message.includes('JACKPOT') ? 'text-yellow-400' : 'text-slate-400'}>{message}</span>}
-        </div>
-      </div>
-
-      <BetInput bet={bet} setBet={setBet} balance={balance} disabled={spinning} />
-
-      <button onClick={spin} disabled={spinning || balance < 1} className="w-full py-3 bg-gradient-to-r from-purple-500 to-fuchsia-500 hover:from-purple-400 hover:to-fuchsia-400 rounded-lg font-bold text-lg disabled:opacity-50">
-        {spinning ? 'Spinning...' : `SPIN ($${bet})`}
-      </button>
-
-      <div className="mt-4">
-        <div className="text-xs text-slate-400 mb-2">Payouts (3 of a kind)</div>
-        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-          {symbols.map(s => (
-            <div key={s.name} className="bg-slate-900/40 rounded p-2 text-center border border-slate-800">
-              <div className="text-2xl">{s.e}</div>
-              <div className="text-xs text-emerald-400">{s.payout}x</div>
-            </div>
-          ))}
-        </div>
-        <div className="text-xs text-slate-500 mt-2">Two of a kind pays 0.5x the triple value</div>
-      </div>
-    </div>
-  );
-}
-
-// ROULETTE
-function Roulette({ balance, updateBalance, onBack }) {
-  const [bet, setBet] = useState(10);
-  const [betType, setBetType] = useState(null);
-  const [betNumber, setBetNumber] = useState(0);
-  const [spinning, setSpinning] = useState(false);
-  const [result, setResult] = useState(null);
-  const [history, setHistory] = useState([]);
-
-  const redNumbers = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
-
-  const getColor = (n) => {
-    if (n === 0) return 'green';
-    return redNumbers.includes(n) ? 'red' : 'black';
-  };
-
-  const spin = () => {
-    if (!betType || bet > balance || bet < 1 || spinning) return;
-    updateBalance(balance - bet, -bet);
-    setSpinning(true);
-    setResult(null);
-
-    setTimeout(() => {
-      const num = Math.floor(Math.random() * 37);
-      const color = getColor(num);
-      setResult({ num, color });
-      setHistory(h => [{ num, color }, ...h].slice(0, 10));
-
-      let payout = 0;
-      if (betType === 'red' && color === 'red') payout = bet * 2;
-      else if (betType === 'black' && color === 'black') payout = bet * 2;
-      else if (betType === 'odd' && num !== 0 && num % 2 === 1) payout = bet * 2;
-      else if (betType === 'even' && num !== 0 && num % 2 === 0) payout = bet * 2;
-      else if (betType === 'low' && num >= 1 && num <= 18) payout = bet * 2;
-      else if (betType === 'high' && num >= 19 && num <= 36) payout = bet * 2;
-      else if (betType === 'number' && num === betNumber) payout = bet * 36;
-
-      if (payout > 0) updateBalance(balance - bet + payout, payout - bet);
-      setSpinning(false);
-    }, 2500);
-  };
-
-  const isWin = result && (
-    (betType === 'red' && result.color === 'red') ||
-    (betType === 'black' && result.color === 'black') ||
-    (betType === 'odd' && result.num !== 0 && result.num % 2 === 1) ||
-    (betType === 'even' && result.num !== 0 && result.num % 2 === 0) ||
-    (betType === 'low' && result.num >= 1 && result.num <= 18) ||
-    (betType === 'high' && result.num >= 19 && result.num <= 36) ||
-    (betType === 'number' && result.num === betNumber)
-  );
-
-  return (
-    <div>
-      <BackBar onBack={onBack} title="Roulette" />
-
-      <div className="bg-gradient-to-b from-emerald-950 to-slate-950 rounded-xl p-6 mb-4 border-4 border-emerald-500/30">
-        <div className="text-center mb-4">
-          <div className={`inline-flex items-center justify-center w-32 h-32 rounded-full text-5xl font-bold border-4 transition-all ${spinning ? 'animate-spin' : ''} ${result?.color === 'red' ? 'bg-red-600 border-red-300' : result?.color === 'black' ? 'bg-slate-900 border-slate-500' : result?.color === 'green' ? 'bg-emerald-600 border-emerald-300' : 'bg-slate-800 border-slate-600'}`}>
-            {spinning ? '🎯' : result ? result.num : '?'}
-          </div>
-          {result && !spinning && (
-            <div className={`mt-3 font-bold text-lg ${isWin ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {isWin ? `🎉 Won $${(betType === 'number' ? bet * 36 : bet * 2).toFixed(2)}!` : 'Lost'}
-            </div>
-          )}
-        </div>
-
-        {history.length > 0 && (
-          <div className="flex gap-1 justify-center flex-wrap">
-            {history.map((h, i) => (
-              <div key={i} className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${h.color === 'red' ? 'bg-red-600' : h.color === 'black' ? 'bg-slate-900 border border-slate-700' : 'bg-emerald-600'}`}>
-                {h.num}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <BetInput bet={bet} setBet={setBet} balance={balance} disabled={spinning} />
-
-      <div className="grid grid-cols-3 gap-2 mb-2">
-        <BetButton active={betType === 'red'} onClick={() => setBetType('red')} disabled={spinning} className="bg-red-700 hover:bg-red-600">Red 2x</BetButton>
-        <BetButton active={betType === 'black'} onClick={() => setBetType('black')} disabled={spinning} className="bg-slate-800 hover:bg-slate-700">Black 2x</BetButton>
-        <BetButton active={betType === 'odd'} onClick={() => setBetType('odd')} disabled={spinning} className="bg-purple-700 hover:bg-purple-600">Odd 2x</BetButton>
-      </div>
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        <BetButton active={betType === 'even'} onClick={() => setBetType('even')} disabled={spinning} className="bg-purple-700 hover:bg-purple-600">Even 2x</BetButton>
-        <BetButton active={betType === 'low'} onClick={() => setBetType('low')} disabled={spinning} className="bg-blue-700 hover:bg-blue-600">1-18 2x</BetButton>
-        <BetButton active={betType === 'high'} onClick={() => setBetType('high')} disabled={spinning} className="bg-blue-700 hover:bg-blue-600">19-36 2x</BetButton>
-      </div>
-
-      <div className="bg-slate-950/50 rounded-lg p-3 mb-4">
-        <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={() => setBetType('number')} className={`px-3 py-2 rounded font-bold ${betType === 'number' ? 'bg-yellow-500 text-black' : 'bg-slate-800'}`}>Number 36x</button>
-          <input
-            type="number"
-            value={betNumber}
-            onChange={e => setBetNumber(Math.max(0, Math.min(36, Number(e.target.value) || 0)))}
-            disabled={spinning}
-            className="bg-slate-800 rounded px-2 py-1 w-20 text-center border border-slate-700"
-            min="0" max="36"
-          />
-          <span className="text-slate-400 text-sm">(0–36)</span>
-        </div>
-      </div>
-
-      <button onClick={spin} disabled={!betType || spinning || balance < 1} className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 rounded-lg font-bold text-lg disabled:opacity-50">
-        {spinning ? 'Spinning...' : betType ? `SPIN — bet $${bet} on ${betType === 'number' ? `#${betNumber}` : betType}` : 'Pick a bet type'}
-      </button>
-    </div>
-  );
-}
-
-function BetButton({ active, onClick, disabled, className, children }) {
-  return (
-    <button onClick={onClick} disabled={disabled} className={`py-2 rounded-lg font-bold text-sm ${active ? 'ring-2 ring-yellow-400 scale-105' : ''} ${className} disabled:opacity-50 transition-all`}>
-      {children}
-    </button>
-  );
-}
-
-// DICE — pick over/under
-function Dice({ balance, updateBalance, onBack }) {
-  const [bet, setBet] = useState(10);
-  const [target, setTarget] = useState(50);
-  const [direction, setDirection] = useState('over'); // over/under
-  const [rolling, setRolling] = useState(false);
-  const [result, setResult] = useState(null);
-
-  // Win chance and multiplier
-  const winChance = direction === 'over' ? (99 - target) : (target - 1);
-  const multiplier = winChance > 0 ? (97 / winChance) : 0; // ~3% house edge
-
-  const roll = () => {
-    if (bet > balance || bet < 1 || rolling || multiplier === 0) return;
-    updateBalance(balance - bet, -bet);
-    setRolling(true);
-
-    let count = 0;
-    const interval = setInterval(() => {
-      setResult({ num: Math.random() * 100, won: null });
-      count++;
-      if (count > 15) {
-        clearInterval(interval);
-        const final = Math.random() * 100;
-        const won = direction === 'over' ? final > target : final < target;
-        setResult({ num: final, won });
-        if (won) {
-          const payout = bet * multiplier;
-          updateBalance(balance - bet + payout, payout - bet);
-        }
-        setRolling(false);
-      }
-    }, 80);
-  };
-
-  return (
-    <div>
-      <BackBar onBack={onBack} title="Dice" />
-
-      <div className="bg-gradient-to-b from-orange-950 to-slate-950 rounded-xl p-6 mb-4 border border-orange-500/30">
-        <div className="text-center mb-4">
-          <div className={`text-7xl font-bold tabular-nums ${result?.won === true ? 'text-emerald-400' : result?.won === false ? 'text-rose-400' : 'text-white'}`}>
-            {result ? result.num.toFixed(2) : '00.00'}
-          </div>
-          {result?.won === true && <div className="text-emerald-400 font-bold mt-2">🎉 Won ${(bet * multiplier).toFixed(2)}!</div>}
-          {result?.won === false && <div className="text-rose-400 font-bold mt-2">Lost</div>}
-        </div>
-
-        {/* Visual slider */}
-        <div className="relative h-6 bg-slate-800 rounded-full overflow-hidden mb-2">
-          <div
-            className={`absolute top-0 bottom-0 ${direction === 'over' ? 'bg-emerald-500/40 right-0' : 'bg-emerald-500/40 left-0'}`}
-            style={direction === 'over' ? { left: `${target}%` } : { right: `${100 - target}%` }}
-          ></div>
-          <div className="absolute top-0 bottom-0 w-1 bg-yellow-400" style={{ left: `${target}%` }}></div>
-          {result && (
-            <div className="absolute top-0 bottom-0 w-2 bg-white rounded-full transition-all" style={{ left: `${result.num}%` }}></div>
-          )}
-        </div>
-        <div className="flex justify-between text-xs text-slate-400">
-          <span>0</span>
-          <span>50</span>
-          <span>100</span>
-        </div>
-      </div>
-
-      <BetInput bet={bet} setBet={setBet} balance={balance} disabled={rolling} />
-
-      <div className="bg-slate-950/50 rounded-lg p-4 mb-4">
-        <div className="flex gap-2 mb-3">
-          <button onClick={() => setDirection('over')} disabled={rolling} className={`flex-1 py-2 rounded font-bold ${direction === 'over' ? 'bg-emerald-600' : 'bg-slate-800'}`}>Roll Over</button>
-          <button onClick={() => setDirection('under')} disabled={rolling} className={`flex-1 py-2 rounded font-bold ${direction === 'under' ? 'bg-emerald-600' : 'bg-slate-800'}`}>Roll Under</button>
-        </div>
-        <label className="text-xs text-slate-400 mb-1 block">Target: {target}</label>
-        <input
-          type="range"
-          min="2"
-          max="98"
-          value={target}
-          onChange={e => setTarget(Number(e.target.value))}
-          disabled={rolling}
-          className="w-full"
-        />
-        <div className="grid grid-cols-3 gap-2 mt-3 text-sm">
-          <div className="bg-slate-800 rounded p-2 text-center">
-            <div className="text-xs text-slate-400">Multiplier</div>
-            <div className="font-bold text-yellow-400">{multiplier.toFixed(2)}x</div>
-          </div>
-          <div className="bg-slate-800 rounded p-2 text-center">
-            <div className="text-xs text-slate-400">Win chance</div>
-            <div className="font-bold text-cyan-400">{winChance.toFixed(0)}%</div>
-          </div>
-          <div className="bg-slate-800 rounded p-2 text-center">
-            <div className="text-xs text-slate-400">Profit</div>
-            <div className="font-bold text-emerald-400">${(bet * multiplier - bet).toFixed(2)}</div>
-          </div>
-        </div>
-      </div>
-
-      <button onClick={roll} disabled={rolling || balance < 1 || multiplier === 0} className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 rounded-lg font-bold text-lg disabled:opacity-50">
-        {rolling ? 'Rolling...' : `ROLL ${direction.toUpperCase()} ${target}`}
-      </button>
-    </div>
-  );
-}
-
-// MINES
-function Mines({ balance, updateBalance, onBack }) {
-  const GRID_SIZE = 5; // 5x5 = 25 tiles
-  const [bet, setBet] = useState(10);
-  const [mineCount, setMineCount] = useState(3);
-  const [grid, setGrid] = useState([]); // array of {revealed, isMine}
-  const [active, setActive] = useState(false);
-  const [revealed, setRevealed] = useState(0);
-  const [message, setMessage] = useState('');
-
-  const totalTiles = GRID_SIZE * GRID_SIZE;
-  const safeTiles = totalTiles - mineCount;
-
-  const calcMultiplier = (n) => {
-    if (n === 0) return 1;
-    let m = 1;
-    for (let i = 0; i < n; i++) {
-      m *= (totalTiles - mineCount - i) / (totalTiles - i);
-    }
-    return 0.97 / m; // 3% house edge
-  };
-
-  const start = () => {
-    if (bet > balance || bet < 1 || active) return;
-    updateBalance(balance - bet, -bet);
-
-    // Place mines
-    const mineIndices = new Set();
-    while (mineIndices.size < mineCount) {
-      mineIndices.add(Math.floor(Math.random() * totalTiles));
-    }
-    const newGrid = Array(totalTiles).fill(null).map((_, i) => ({
-      revealed: false,
-      isMine: mineIndices.has(i)
-    }));
-    setGrid(newGrid);
-    setActive(true);
-    setRevealed(0);
-    setMessage('');
-  };
-
-  const reveal = (idx) => {
-    if (!active || grid[idx].revealed) return;
-    const newGrid = [...grid];
-    newGrid[idx] = { ...newGrid[idx], revealed: true };
-
-    if (newGrid[idx].isMine) {
-      // Reveal all mines
-      const finalGrid = newGrid.map(t => t.isMine ? { ...t, revealed: true } : t);
-      setGrid(finalGrid);
-      setActive(false);
-      setMessage('💥 BOOM! You hit a mine.');
-    } else {
-      setGrid(newGrid);
-      setRevealed(r => r + 1);
-    }
-  };
-
-  const cashOut = () => {
-    if (!active || revealed === 0) return;
-    const mult = calcMultiplier(revealed);
-    const winnings = bet * mult;
-    updateBalance(balance - bet + winnings, winnings - bet);
-    setActive(false);
-    setMessage(`✓ Cashed out at ${mult.toFixed(2)}x — won $${winnings.toFixed(2)}!`);
-    // Reveal all mines
-    setGrid(grid.map(t => t.isMine ? { ...t, revealed: true, mineRevealed: true } : t));
-  };
-
-  const currentMult = calcMultiplier(revealed);
-  const nextMult = revealed < safeTiles ? calcMultiplier(revealed + 1) : currentMult;
-
-  return (
-    <div>
-      <BackBar onBack={onBack} title="Mines" />
-
-      <div className="bg-gradient-to-b from-red-950/40 to-slate-950 rounded-xl p-4 mb-4 border border-red-500/30">
-        <div className="grid grid-cols-5 gap-2 max-w-md mx-auto">
-          {(grid.length > 0 ? grid : Array(25).fill({ revealed: false, isMine: false })).map((tile, i) => (
-            <button
-              key={i}
-              onClick={() => reveal(i)}
-              disabled={!active || tile.revealed}
-              className={`aspect-square rounded-lg border-2 text-2xl font-bold transition-all ${
-                tile.revealed
-                  ? tile.isMine
-                    ? 'bg-rose-900 border-rose-500'
-                    : 'bg-emerald-900/50 border-emerald-500/50'
-                  : 'bg-slate-800 border-slate-700 hover:border-cyan-400 hover:scale-105 cursor-pointer'
-              } ${!active ? 'cursor-not-allowed' : ''}`}
-            >
-              {tile.revealed && (tile.isMine ? '💣' : '💎')}
-            </button>
-          ))}
-        </div>
-        {active && (
-          <div className="text-center mt-4 text-sm">
-            <div className="text-emerald-400">Current: {currentMult.toFixed(2)}x (${(bet * currentMult).toFixed(2)})</div>
-            <div className="text-slate-400">Next gem: {nextMult.toFixed(2)}x</div>
-          </div>
-        )}
-        {message && (
-          <div className={`text-center mt-3 font-bold ${message.includes('Cashed') ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {message}
-          </div>
-        )}
-      </div>
-
-      {!active && (
-        <>
-          <BetInput bet={bet} setBet={setBet} balance={balance} disabled={false} />
-          <div className="bg-slate-950/50 rounded-lg p-3 mb-4">
-            <label className="text-xs text-slate-400 mb-2 block">Mines: {mineCount} (more = bigger payouts)</label>
-            <input
-              type="range"
-              min="1"
-              max="20"
-              value={mineCount}
-              onChange={e => setMineCount(Number(e.target.value))}
-              className="w-full"
-            />
-          </div>
-          <button onClick={start} disabled={balance < 1} className="w-full py-3 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-400 hover:to-rose-400 rounded-lg font-bold text-lg disabled:opacity-50">
-            Start Game ($${bet})
-          </button>
-        </>
-      )}
-      {active && (
-        <button onClick={cashOut} disabled={revealed === 0} className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 rounded-lg font-bold text-lg disabled:opacity-50">
-          {revealed === 0 ? 'Reveal at least 1 tile' : `Cash Out — $${(bet * currentMult).toFixed(2)}`}
-        </button>
-      )}
-    </div>
-  );
-}
-
-// PLINKO
-function Plinko({ balance, updateBalance, onBack }) {
-  const [bet, setBet] = useState(10);
-  const [risk, setRisk] = useState('medium');
-  const [dropping, setDropping] = useState(false);
-  const [ballPos, setBallPos] = useState(null); // { x, y }
-  const [resultBucket, setResultBucket] = useState(null);
-
-  const buckets = {
-    low:    [2.0, 1.5, 1.2, 1.0, 0.8, 1.0, 1.2, 1.5, 2.0],
-    medium: [5.0, 2.5, 1.5, 1.0, 0.4, 1.0, 1.5, 2.5, 5.0],
-    high:   [29,  4,   1.5, 0.5, 0.2, 0.5, 1.5, 4,   29],
-  };
-
-  const ROWS = 8;
-
-  const drop = () => {
-    if (bet > balance || bet < 1 || dropping) return;
-    updateBalance(balance - bet, -bet);
-    setDropping(true);
-    setResultBucket(null);
-
-    // Simulate path
-    let position = 0; // -8 to +8 even numbers
-    const path = [{ x: 0, y: 0 }];
-    for (let row = 0; row < ROWS; row++) {
-      position += Math.random() < 0.5 ? -1 : 1;
-      path.push({ x: position, y: row + 1 });
-    }
-    // Convert position to bucket index (0-8)
-    const bucketIdx = Math.max(0, Math.min(8, Math.round((position + ROWS) / 2)));
-
-    let step = 0;
-    const interval = setInterval(() => {
-      if (step < path.length) {
-        setBallPos(path[step]);
-        step++;
-      } else {
-        clearInterval(interval);
-        setResultBucket(bucketIdx);
-        const mult = buckets[risk][bucketIdx];
-        const winnings = bet * mult;
-        updateBalance(balance - bet + winnings, winnings - bet);
-        setTimeout(() => {
-          setDropping(false);
-          setBallPos(null);
-        }, 1500);
-      }
-    }, 200);
-  };
-
-  return (
-    <div>
-      <BackBar onBack={onBack} title="Plinko" />
-
-      <div className="bg-gradient-to-b from-violet-950 to-slate-950 rounded-xl p-4 mb-4 border border-violet-500/30">
-        <svg viewBox="-10 -1 20 11" className="w-full max-w-md mx-auto" style={{ aspectRatio: '20/11' }}>
-          {/* Pegs */}
-          {Array.from({ length: ROWS }).map((_, row) =>
-            Array.from({ length: row + 3 }).map((_, col) => {
-              const x = (col - (row + 2) / 2) * 2;
-              const y = row + 1;
-              return <circle key={`${row}-${col}`} cx={x} cy={y} r="0.15" fill="#a78bfa" />;
-            })
-          )}
-          {/* Ball */}
-          {ballPos && (
-            <circle cx={ballPos.x} cy={ballPos.y} r="0.4" fill="#fbbf24" style={{ filter: 'drop-shadow(0 0 4px #fbbf24)' }} />
+          {progress > 0.005 && progress < 0.998 && (
+            <circle cx={dotX} cy={dotY} r={stroke * 1.6} fill={arcColor}
+              style={{ filter: `drop-shadow(0 0 5px ${glow})` }} />
           )}
         </svg>
-
-        {/* Buckets */}
-        <div className="grid grid-cols-9 gap-1 mt-2">
-          {buckets[risk].map((m, i) => (
-            <div key={i} className={`text-center py-2 rounded text-xs font-bold transition-all ${
-              resultBucket === i
-                ? 'bg-yellow-500 text-black scale-110'
-                : m >= 2 ? 'bg-emerald-700/50 text-emerald-300'
-                : m >= 1 ? 'bg-slate-700 text-slate-300'
-                : 'bg-rose-900/50 text-rose-300'
-            }`}>
-              {m}x
-            </div>
-          ))}
-        </div>
-        {resultBucket !== null && (
-          <div className="text-center mt-3 font-bold">
-            <span className={buckets[risk][resultBucket] >= 1 ? 'text-emerald-400' : 'text-rose-400'}>
-              {buckets[risk][resultBucket]}x — {buckets[risk][resultBucket] >= 1 ? `Won $${(bet * buckets[risk][resultBucket]).toFixed(2)}` : `Lost`}
-            </span>
-          </div>
-        )}
-      </div>
-
-      <BetInput bet={bet} setBet={setBet} balance={balance} disabled={dropping} />
-
-      <div className="bg-slate-950/50 rounded-lg p-3 mb-4">
-        <div className="text-xs text-slate-400 mb-2">Risk level</div>
-        <div className="grid grid-cols-3 gap-2">
-          <button onClick={() => setRisk('low')} disabled={dropping} className={`py-2 rounded font-bold text-sm ${risk === 'low' ? 'bg-emerald-600' : 'bg-slate-800'}`}>Low</button>
-          <button onClick={() => setRisk('medium')} disabled={dropping} className={`py-2 rounded font-bold text-sm ${risk === 'medium' ? 'bg-yellow-600' : 'bg-slate-800'}`}>Medium</button>
-          <button onClick={() => setRisk('high')} disabled={dropping} className={`py-2 rounded font-bold text-sm ${risk === 'high' ? 'bg-rose-600' : 'bg-slate-800'}`}>High</button>
-        </div>
-      </div>
-
-      <button onClick={drop} disabled={dropping || balance < 1} className="w-full py-3 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-400 hover:to-purple-400 rounded-lg font-bold text-lg disabled:opacity-50">
-        {dropping ? 'Dropping...' : `Drop Ball ($${bet})`}
-      </button>
-    </div>
-  );
-}
-
-// BLACKJACK
-function Blackjack({ balance, updateBalance, onBack }) {
-  const [bet, setBet] = useState(10);
-  const [deck, setDeck] = useState([]);
-  const [playerHand, setPlayerHand] = useState([]);
-  const [dealerHand, setDealerHand] = useState([]);
-  const [state, setState] = useState('idle'); // idle, playing, dealer, done
-  const [message, setMessage] = useState('');
-  const [hideDealer, setHideDealer] = useState(true);
-
-  const createDeck = () => {
-    const suits = ['♠', '♥', '♦', '♣'];
-    const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-    const d = [];
-    for (let s = 0; s < 6; s++) { // 6 decks
-      for (const suit of suits) {
-        for (const rank of ranks) {
-          d.push({ rank, suit, isRed: suit === '♥' || suit === '♦' });
-        }
-      }
-    }
-    return d.sort(() => Math.random() - 0.5);
-  };
-
-  const cardValue = (card) => {
-    if (card.rank === 'A') return 11;
-    if (['J', 'Q', 'K'].includes(card.rank)) return 10;
-    return Number(card.rank);
-  };
-
-  const handValue = (hand) => {
-    let total = hand.reduce((s, c) => s + cardValue(c), 0);
-    let aces = hand.filter(c => c.rank === 'A').length;
-    while (total > 21 && aces > 0) {
-      total -= 10;
-      aces--;
-    }
-    return total;
-  };
-
-  const start = () => {
-    if (bet > balance || bet < 1) return;
-    updateBalance(balance - bet, -bet);
-    const newDeck = createDeck();
-    const ph = [newDeck.pop(), newDeck.pop()];
-    const dh = [newDeck.pop(), newDeck.pop()];
-    setDeck(newDeck);
-    setPlayerHand(ph);
-    setDealerHand(dh);
-    setHideDealer(true);
-    setMessage('');
-
-    // Check for blackjack
-    if (handValue(ph) === 21) {
-      setHideDealer(false);
-      if (handValue(dh) === 21) {
-        setMessage('Push — both blackjack');
-        updateBalance(balance, 0);
-        setState('done');
-      } else {
-        const winnings = bet * 2.5;
-        updateBalance(balance - bet + winnings, winnings - bet);
-        setMessage(`🎉 BLACKJACK! Won $${(winnings - bet).toFixed(2)}`);
-        setState('done');
-      }
-    } else {
-      setState('playing');
-    }
-  };
-
-  const hit = () => {
-    if (state !== 'playing') return;
-    const newDeck = [...deck];
-    const card = newDeck.pop();
-    const newHand = [...playerHand, card];
-    setDeck(newDeck);
-    setPlayerHand(newHand);
-    if (handValue(newHand) > 21) {
-      setMessage('💥 BUST!');
-      setState('done');
-      setHideDealer(false);
-    } else if (handValue(newHand) === 21) {
-      stand([...newHand]);
-    }
-  };
-
-  const stand = (currentHand = playerHand) => {
-    setState('dealer');
-    setHideDealer(false);
-    let dh = [...dealerHand];
-    let d = [...deck];
-    const playOut = () => {
-      while (handValue(dh) < 17) {
-        dh.push(d.pop());
-      }
-      setDealerHand(dh);
-      setDeck(d);
-      const pv = handValue(currentHand);
-      const dv = handValue(dh);
-      let payout = 0;
-      let msg = '';
-      if (dv > 21) {
-        payout = bet * 2;
-        msg = `🎉 Dealer busts! Won $${bet}`;
-      } else if (dv > pv) {
-        msg = 'Dealer wins';
-      } else if (pv > dv) {
-        payout = bet * 2;
-        msg = `🎉 You win $${bet}!`;
-      } else {
-        payout = bet;
-        msg = 'Push';
-      }
-      if (payout > 0) updateBalance(balance - bet + payout, payout - bet);
-      setMessage(msg);
-      setState('done');
-    };
-    setTimeout(playOut, 600);
-  };
-
-  const doubleDown = () => {
-    if (state !== 'playing' || playerHand.length !== 2 || balance < bet) return;
-    updateBalance(balance - bet, -bet);
-    const newDeck = [...deck];
-    const card = newDeck.pop();
-    const newHand = [...playerHand, card];
-    setDeck(newDeck);
-    setPlayerHand(newHand);
-    setBet(bet * 2); // for payout calculation
-    setTimeout(() => {
-      if (handValue(newHand) > 21) {
-        setMessage('💥 BUST on double!');
-        setState('done');
-        setHideDealer(false);
-      } else {
-        stand(newHand);
-      }
-    }, 500);
-  };
-
-  const reset = () => {
-    setState('idle');
-    setPlayerHand([]);
-    setDealerHand([]);
-    setMessage('');
-    setBet(b => Math.max(10, Math.floor(b / 2))); // restore bet from double
-  };
-
-  const Card = ({ card, hidden }) => (
-    <div className={`inline-block w-16 h-24 rounded-lg border-2 ${hidden ? 'bg-blue-900 border-blue-500' : 'bg-white border-slate-300'} flex flex-col items-center justify-center mr-1 shadow-lg`}>
-      {!hidden && (
-        <>
-          <div className={`text-xl font-bold ${card.isRed ? 'text-red-600' : 'text-slate-900'}`}>{card.rank}</div>
-          <div className={`text-2xl ${card.isRed ? 'text-red-600' : 'text-slate-900'}`}>{card.suit}</div>
-        </>
-      )}
-      {hidden && <div className="text-3xl">🂠</div>}
-    </div>
-  );
-
-  return (
-    <div>
-      <BackBar onBack={onBack} title="Blackjack" />
-
-      <div className="bg-gradient-to-b from-emerald-950 to-slate-950 rounded-xl p-6 mb-4 border-4 border-emerald-700/50">
-        {/* Dealer */}
-        <div className="mb-6">
-          <div className="text-sm text-slate-400 mb-2">
-            Dealer {!hideDealer && dealerHand.length > 0 && `(${handValue(dealerHand)})`}
-          </div>
-          <div className="flex flex-wrap">
-            {dealerHand.map((card, i) => (
-              <Card key={i} card={card} hidden={hideDealer && i === 1} />
-            ))}
-            {dealerHand.length === 0 && <div className="text-slate-600 italic">Waiting...</div>}
-          </div>
-        </div>
-
-        {/* Player */}
-        <div>
-          <div className="text-sm text-slate-400 mb-2">
-            You {playerHand.length > 0 && `(${handValue(playerHand)})`}
-          </div>
-          <div className="flex flex-wrap">
-            {playerHand.map((card, i) => <Card key={i} card={card} />)}
-            {playerHand.length === 0 && <div className="text-slate-600 italic">Place a bet to start</div>}
-          </div>
-        </div>
-
-        {message && (
-          <div className={`text-center mt-4 text-lg font-bold ${message.includes('Won') || message.includes('win') || message.includes('BLACKJACK') ? 'text-emerald-400' : message.includes('Push') ? 'text-yellow-400' : 'text-rose-400'}`}>
-            {message}
-          </div>
-        )}
-      </div>
-
-      {state === 'idle' && (
-        <>
-          <BetInput bet={bet} setBet={setBet} balance={balance} disabled={false} />
-          <button onClick={start} disabled={balance < 1} className="w-full py-3 bg-gradient-to-r from-slate-400 to-slate-600 hover:from-slate-300 hover:to-slate-500 rounded-lg font-bold text-lg text-black disabled:opacity-50">
-            Deal ($${bet})
-          </button>
-        </>
-      )}
-
-      {state === 'playing' && (
-        <div className="grid grid-cols-3 gap-2">
-          <button onClick={hit} className="py-3 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold">Hit</button>
-          <button onClick={() => stand()} className="py-3 bg-amber-600 hover:bg-amber-500 rounded-lg font-bold">Stand</button>
-          <button onClick={doubleDown} disabled={playerHand.length !== 2 || balance < bet} className="py-3 bg-purple-600 hover:bg-purple-500 rounded-lg font-bold disabled:opacity-50">2x Down</button>
-        </div>
-      )}
-
-      {state === 'done' && (
-        <button onClick={reset} className="w-full py-3 bg-slate-600 hover:bg-slate-500 rounded-lg font-bold">Play Again</button>
-      )}
-    </div>
-  );
-}
-
-// WHEEL OF FORTUNE
-function WheelGame({ balance, updateBalance, onBack }) {
-  const segments = [
-    { mult: 0,    color: '#475569', label: '0x' },
-    { mult: 1.5,  color: '#10b981', label: '1.5x' },
-    { mult: 0.5,  color: '#64748b', label: '0.5x' },
-    { mult: 2,    color: '#06b6d4', label: '2x' },
-    { mult: 0,    color: '#475569', label: '0x' },
-    { mult: 3,    color: '#3b82f6', label: '3x' },
-    { mult: 1,    color: '#84cc16', label: '1x' },
-    { mult: 5,    color: '#a855f7', label: '5x' },
-    { mult: 0.5,  color: '#64748b', label: '0.5x' },
-    { mult: 2,    color: '#06b6d4', label: '2x' },
-    { mult: 1,    color: '#84cc16', label: '1x' },
-    { mult: 10,   color: '#ec4899', label: '10x' },
-    { mult: 0,    color: '#475569', label: '0x' },
-    { mult: 1.5,  color: '#10b981', label: '1.5x' },
-    { mult: 2,    color: '#06b6d4', label: '2x' },
-    { mult: 50,   color: '#fbbf24', label: '50x' },
-  ];
-
-  const [bet, setBet] = useState(10);
-  const [spinning, setSpinning] = useState(false);
-  const [rotation, setRotation] = useState(0);
-  const [result, setResult] = useState(null);
-
-  const spin = () => {
-    if (bet > balance || bet < 1 || spinning) return;
-    updateBalance(balance - bet, -bet);
-    setSpinning(true);
-    setResult(null);
-
-    // Pick winning segment (weighted toward lower mults but with chance for big)
-    const weights = segments.map(s => s.mult === 0 ? 8 : s.mult <= 1 ? 18 : s.mult <= 2 ? 12 : s.mult <= 5 ? 4 : s.mult <= 10 ? 2 : 0.5);
-    const total = weights.reduce((a, b) => a + b, 0);
-    let r = Math.random() * total;
-    let winIdx = 0;
-    for (let i = 0; i < segments.length; i++) {
-      r -= weights[i];
-      if (r <= 0) { winIdx = i; break; }
+      );
     }
 
-    const segmentAngle = 360 / segments.length;
-    const targetAngle = 360 * 6 + (360 - winIdx * segmentAngle - segmentAngle / 2); // 6 full rotations
-    setRotation(targetAngle);
+    // ── Preset Chip ─────────────────────────────────────────────────────────
+    function PresetChip({ label, onClick }) {
+      return (
+        <button className="glass-btn" onClick={onClick} style={{
+          padding: '9px 18px', borderRadius: 22,
+          fontSize: 14, fontWeight: 500,
+          color: 'rgba(255,255,255,0.75)',
+          fontFamily: SF, flexShrink: 0,
+        }}>{label}</button>
+      );
+    }
 
-    setTimeout(() => {
-      setResult(segments[winIdx]);
-      const winnings = bet * segments[winIdx].mult;
-      if (winnings > 0) updateBalance(balance - bet + winnings, winnings - bet);
-      setSpinning(false);
-    }, 4000);
-  };
+    // ── Control Button ──────────────────────────────────────────────────────
+    function CtrlBtn({ icon, label, onTap, color, size = 68, disabled }) {
+      return (
+        <button className="glass-btn" onClick={onTap} disabled={disabled} style={{
+          width: size, height: size, borderRadius: size / 2,
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', gap: 3,
+          border: `1px solid ${color ? color+'44' : 'rgba(255,255,255,0.16)'}`,
+          background: color ? `${color}22` : 'rgba(255,255,255,0.10)',
+          opacity: disabled ? 0.3 : 1,
+          cursor: disabled ? 'default' : 'pointer',
+        }}>
+          <span style={{ fontSize: size > 60 ? 24 : 18, lineHeight: 1 }}>{icon}</span>
+          {label && <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.06em',
+            textTransform: 'uppercase', color: color || 'rgba(255,255,255,0.6)' }}>{label}</span>}
+        </button>
+      );
+    }
 
-  return (
-    <div>
-      <BackBar onBack={onBack} title="Wheel of Fortune" />
+    // ── Big Play/Pause Button ───────────────────────────────────────────────
+    function BigBtn({ icon, color, onTap }) {
+      return (
+        <button className="glass-btn" onClick={onTap} style={{
+          width: 86, height: 86, borderRadius: 43,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 30,
+          background: color ? `${color}28` : 'rgba(255,255,255,0.12)',
+          border: `1px solid ${color ? color+'55' : 'rgba(255,255,255,0.22)'}`,
+          boxShadow: color
+            ? `0 0 30px ${color}33, 0 4px 16px rgba(0,0,0,0.5)`
+            : '0 4px 16px rgba(0,0,0,0.5)',
+        }}>{icon}</button>
+      );
+    }
 
-      <div className="bg-gradient-to-b from-fuchsia-950 to-slate-950 rounded-xl p-6 mb-4 border border-fuchsia-500/30">
-        <div className="relative w-72 h-72 mx-auto mb-4">
-          {/* Pointer */}
-          <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-20">
-            <div className="w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[20px] border-t-yellow-400" style={{ filter: 'drop-shadow(0 0 8px rgba(250,204,21,0.8))' }}></div>
-          </div>
-          <svg viewBox="-110 -110 220 220" className="w-full h-full transition-transform" style={{ transform: `rotate(${rotation}deg)`, transitionDuration: spinning ? '4s' : '0s', transitionTimingFunction: 'cubic-bezier(0.15, 0.5, 0.2, 1)' }}>
-            {segments.map((seg, i) => {
-              const angle = 360 / segments.length;
-              const startAngle = i * angle;
-              const endAngle = (i + 1) * angle;
-              const startRad = (startAngle - 90) * Math.PI / 180;
-              const endRad = (endAngle - 90) * Math.PI / 180;
-              const x1 = 100 * Math.cos(startRad);
-              const y1 = 100 * Math.sin(startRad);
-              const x2 = 100 * Math.cos(endRad);
-              const y2 = 100 * Math.sin(endRad);
-              const labelAngle = (startAngle + endAngle) / 2 - 90;
-              const labelRad = labelAngle * Math.PI / 180;
-              const lx = 65 * Math.cos(labelRad);
-              const ly = 65 * Math.sin(labelRad);
-              return (
-                <g key={i}>
-                  <path d={`M 0 0 L ${x1} ${y1} A 100 100 0 0 1 ${x2} ${y2} Z`} fill={seg.color} stroke="#0f172a" strokeWidth="1" />
-                  <text x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="11" fontWeight="bold" transform={`rotate(${labelAngle + 90}, ${lx}, ${ly})`}>
-                    {seg.label}
-                  </text>
-                </g>
-              );
-            })}
-            <circle cx="0" cy="0" r="15" fill="#fbbf24" stroke="#0f172a" strokeWidth="2" />
-          </svg>
-        </div>
+    // ── TIMER ───────────────────────────────────────────────────────────────
+    function TimerTab() {
+      const [totalMs, setTotalMs]   = useState(0);
+      const [remaining, setRem]     = useState(0);
+      const [running, setRunning]   = useState(false);
+      const [finished, setFinished] = useState(false);
+      const [editing, setEditing]   = useState(true);
+      const [hI, setHI] = useState('00');
+      const [mI, setMI] = useState('05');
+      const [sI, setSI] = useState('00');
 
-        {result && (
-          <div className="text-center">
-            <div className={`text-2xl font-bold ${result.mult >= 1 ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {result.label} {result.mult > 0 ? `— Won $${(bet * result.mult).toFixed(2)}!` : '— No win'}
+      const rafRef = useRef(null);
+      const endRef = useRef(null);
+
+      const PRESETS = [
+        { label: '1 min',  ms: 60000   },
+        { label: '3 min',  ms: 180000  },
+        { label: '5 min',  ms: 300000  },
+        { label: '10 min', ms: 600000  },
+        { label: '15 min', ms: 900000  },
+        { label: '25 min', ms: 1500000 },
+      ];
+
+      const msFromInput = useCallback(() => {
+        const h = Math.max(0, parseInt(hI) || 0);
+        const m = Math.max(0, parseInt(mI) || 0);
+        const s = Math.max(0, parseInt(sI) || 0);
+        return (h * 3600 + m * 60 + s) * 1000;
+      }, [hI, mI, sI]);
+
+      const doTick = useCallback(() => {
+        const left = Math.max(0, endRef.current - Date.now());
+        setRem(left);
+        if (left <= 0) { setRunning(false); setFinished(true); }
+        else rafRef.current = requestAnimationFrame(doTick);
+      }, []);
+
+      const stop = useCallback(() => {
+        cancelAnimationFrame(rafRef.current);
+        setRunning(false); setFinished(false); setEditing(true);
+        const ms = msFromInput();
+        setRem(ms); setTotalMs(ms);
+      }, [msFromInput]);
+
+      const start = useCallback((ms) => {
+        const dur = ms ?? msFromInput();
+        if (!dur) return;
+        endRef.current = Date.now() + dur;
+        setRunning(true); setFinished(false); setEditing(false);
+        setTotalMs(dur); setRem(dur);
+        rafRef.current = requestAnimationFrame(doTick);
+      }, [msFromInput, doTick]);
+
+      const pause = () => { cancelAnimationFrame(rafRef.current); setRunning(false); };
+      const resume = () => {
+        endRef.current = Date.now() + remaining;
+        setRunning(true);
+        rafRef.current = requestAnimationFrame(doTick);
+      };
+
+      const applyPreset = (ms) => {
+        cancelAnimationFrame(rafRef.current);
+        setRunning(false); setFinished(false); setEditing(false);
+        const h = Math.floor(ms / 3600000);
+        const m = Math.floor((ms % 3600000) / 60000);
+        const s = Math.floor((ms % 60000) / 1000);
+        setHI(pad(h)); setMI(pad(m)); setSI(pad(s));
+        setTotalMs(ms); setRem(ms);
+      };
+
+      useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+
+      const curMs = editing ? msFromInput() : remaining;
+      const { h, m, s, hasH } = formatTime(curMs);
+      const progress = totalMs > 0 ? remaining / totalMs : (editing ? 1 : 0);
+      const sepSize = hasH ? 44 : 60;
+
+      return (
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap: 28 }}>
+          {/* Ring */}
+          <div style={{ position:'relative', width:280, height:280 }}>
+            <ProgressRing progress={editing ? 1 : progress} size={280}
+              isRunning={running} mode="timer" finished={finished} />
+
+            {running && !finished && (
+              <div style={{ position:'absolute', inset:-24, borderRadius:'50%',
+                background:'radial-gradient(circle,rgba(10,132,255,0.10) 0%,transparent 70%)',
+                animation:'glow-pulse 2s ease-in-out infinite', pointerEvents:'none' }} />
+            )}
+            {finished && (
+              <div style={{ position:'absolute', inset:-24, borderRadius:'50%',
+                background:'radial-gradient(circle,rgba(255,69,58,0.14) 0%,transparent 70%)',
+                animation:'pulse-ring 1s ease-in-out infinite', pointerEvents:'none' }} />
+            )}
+
+            {/* Center digits */}
+            <div style={{
+              position:'absolute', top:'50%', left:'50%',
+              transform:'translate(-50%,-50%)',
+              display:'flex', flexDirection:'column', alignItems:'center', gap: 6,
+            }}>
+              {editing ? (
+                <div style={{ display:'flex', alignItems:'center', gap: 4 }}>
+                  <input className="digit-input" type="number" value={hI} min="0" max="99"
+                    onChange={e => setHI(e.target.value.replace(/\D/g,'').slice(-2))}
+                    onFocus={e => e.target.select()} style={{ width:72 }} />
+                  <span style={{ fontSize:36, fontWeight:200, color:'rgba(255,255,255,0.25)' }}>:</span>
+                  <input className="digit-input" type="number" value={mI} min="0" max="59"
+                    onChange={e => setMI(e.target.value.replace(/\D/g,'').slice(-2))}
+                    onFocus={e => e.target.select()} style={{ width:72 }} />
+                  <span style={{ fontSize:36, fontWeight:200, color:'rgba(255,255,255,0.25)' }}>:</span>
+                  <input className="digit-input" type="number" value={sI} min="0" max="59"
+                    onChange={e => setSI(e.target.value.replace(/\D/g,'').slice(-2))}
+                    onFocus={e => e.target.select()} style={{ width:72 }} />
+                </div>
+              ) : (
+                <div style={{ display:'flex', alignItems:'center', gap: 4,
+                  animation: finished ? 'bounce-in 0.4s cubic-bezier(0.34,1.56,0.64,1)' : 'none' }}>
+                  {hasH && <>
+                    <span style={{ fontSize:58, fontWeight:200, letterSpacing:'-0.04em',
+                      fontVariantNumeric:'tabular-nums', color:'#fff', lineHeight:1 }}>{h}</span>
+                    <span style={{ fontSize:sepSize, fontWeight:200, color:'rgba(255,255,255,0.22)', marginBottom:2 }}>:</span>
+                  </>}
+                  <span style={{ fontSize: hasH ? 58 : 78, fontWeight:200, letterSpacing:'-0.04em',
+                    fontVariantNumeric:'tabular-nums', color: finished ? '#ff453a' : '#fff', lineHeight:1,
+                    transition:'color 0.3s ease' }}>{m}</span>
+                  <span style={{ fontSize:sepSize, fontWeight:200, color:'rgba(255,255,255,0.22)', marginBottom:2 }}>:</span>
+                  <span style={{ fontSize: hasH ? 58 : 78, fontWeight:200, letterSpacing:'-0.04em',
+                    fontVariantNumeric:'tabular-nums', color: finished ? '#ff453a' : '#fff', lineHeight:1,
+                    transition:'color 0.3s ease' }}>{s}</span>
+                </div>
+              )}
+              {finished && (
+                <span style={{ fontSize:12, fontWeight:600, letterSpacing:'0.1em',
+                  color:'#ff453a', textTransform:'uppercase', animation:'fade-in 0.3s ease' }}>
+                  Time's Up
+                </span>
+              )}
             </div>
           </div>
-        )}
-      </div>
 
-      <BetInput bet={bet} setBet={setBet} balance={balance} disabled={spinning} />
+          {/* Presets */}
+          {(editing || (!running && !finished)) && (
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'center',
+              maxWidth:340, animation:'slide-up 0.3s ease' }}>
+              {PRESETS.map(p => <PresetChip key={p.ms} label={p.label} onClick={() => applyPreset(p.ms)} />)}
+            </div>
+          )}
 
-      <button onClick={spin} disabled={spinning || balance < 1} className="w-full py-3 bg-gradient-to-r from-fuchsia-500 to-pink-500 hover:from-fuchsia-400 hover:to-pink-400 rounded-lg font-bold text-lg disabled:opacity-50">
-        {spinning ? 'Spinning...' : `SPIN WHEEL ($${bet})`}
-      </button>
-    </div>
-  );
-}
+          {/* Controls */}
+          <div style={{ display:'flex', gap:20, alignItems:'center' }}>
+            {(finished || !running) && (
+              <CtrlBtn icon="↩" label="Reset" onTap={stop}
+                disabled={!totalMs && editing && !msFromInput()} color={finished ? '#ff453a' : undefined} />
+            )}
+
+            {!running
+              ? <BigBtn icon="▶" color="#0a84ff"
+                  onTap={() => editing ? start() : (remaining < totalMs ? resume() : start())} />
+              : <BigBtn icon="⏸" onTap={pause} />
+            }
+
+            {running && <CtrlBtn icon="⏹" label="Stop" onTap={stop} color="#ff453a" />}
+          </div>
+        </div>
+      );
+    }
+
+    // ── STOPWATCH ───────────────────────────────────────────────────────────
+    function StopwatchTab() {
+      const [elapsed, setElapsed] = useState(0);
+      const [running, setRunning] = useState(false);
+      const [laps, setLaps]       = useState([]);
+
+      const rafRef    = useRef(null);
+      const startRef  = useRef(null);
+      const offsetRef = useRef(0);
+
+      const doTick = useCallback(() => {
+        setElapsed(offsetRef.current + (Date.now() - startRef.current));
+        rafRef.current = requestAnimationFrame(doTick);
+      }, []);
+
+      const start = () => {
+        startRef.current = Date.now();
+        setRunning(true);
+        rafRef.current = requestAnimationFrame(doTick);
+      };
+      const pause = () => {
+        cancelAnimationFrame(rafRef.current);
+        offsetRef.current += Date.now() - startRef.current;
+        setRunning(false);
+      };
+      const reset = () => {
+        cancelAnimationFrame(rafRef.current);
+        offsetRef.current = 0;
+        setElapsed(0); setRunning(false); setLaps([]);
+      };
+      const lap = () => {
+        const prev = laps[0]?.cumulative ?? 0;
+        setLaps(l => [{ time: elapsed - prev, cumulative: elapsed, id: l.length }, ...l]);
+      };
+
+      useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+
+      const { h, m, s, cs, hasH } = formatTime(elapsed, true);
+      const lapTimes = laps.map(l => l.time);
+      const best  = lapTimes.length > 1 ? Math.min(...lapTimes) : null;
+      const worst = lapTimes.length > 1 ? Math.max(...lapTimes) : null;
+
+      return (
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:28 }}>
+          {/* Ring */}
+          <div style={{ position:'relative', width:280, height:280 }}>
+            <ProgressRing progress={0} size={280} isRunning={running} mode="stopwatch" />
+            {running && (
+              <div style={{ position:'absolute', inset:-24, borderRadius:'50%',
+                background:'radial-gradient(circle,rgba(52,199,89,0.09) 0%,transparent 70%)',
+                animation:'glow-pulse 1.5s ease-in-out infinite', pointerEvents:'none' }} />
+            )}
+            <div style={{ position:'absolute', top:'50%', left:'50%',
+              transform:'translate(-50%,-50%)',
+              display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                {hasH && <>
+                  <span style={{ fontSize:58, fontWeight:200, letterSpacing:'-0.04em',
+                    fontVariantNumeric:'tabular-nums', color:'#fff', lineHeight:1 }}>{h}</span>
+                  <span style={{ fontSize:44, fontWeight:200, color:'rgba(255,255,255,0.22)', marginBottom:2 }}>:</span>
+                </>}
+                <span style={{ fontSize: hasH ? 58 : 78, fontWeight:200, letterSpacing:'-0.04em',
+                  fontVariantNumeric:'tabular-nums', color:'#fff', lineHeight:1 }}>{m}</span>
+                <span style={{ fontSize: hasH ? 44 : 60, fontWeight:200, color:'rgba(255,255,255,0.22)', marginBottom:2 }}>:</span>
+                <span style={{ fontSize: hasH ? 58 : 78, fontWeight:200, letterSpacing:'-0.04em',
+                  fontVariantNumeric:'tabular-nums', color:'#fff', lineHeight:1 }}>{s}</span>
+              </div>
+              <span style={{ fontSize:26, fontWeight:300, letterSpacing:'0.02em',
+                color:'rgba(255,255,255,0.4)', fontVariantNumeric:'tabular-nums' }}>.{cs}</span>
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div style={{ display:'flex', gap:20, alignItems:'center' }}>
+            {running ? (
+              <>
+                <CtrlBtn icon="⊙" label="Lap" onTap={lap} />
+                <BigBtn icon="⏸" onTap={pause} />
+              </>
+            ) : (
+              <>
+                <CtrlBtn icon="↩" label="Reset" onTap={reset} disabled={elapsed === 0} />
+                <BigBtn icon="▶" color="#34c759" onTap={start} />
+              </>
+            )}
+          </div>
+
+          {/* Laps */}
+          {laps.length > 0 && (
+            <div className="glass" style={{
+              width:'100%', maxWidth:340, borderRadius:22,
+              overflow:'hidden', maxHeight:200, overflowY:'auto',
+              animation:'slide-up 0.3s ease',
+            }}>
+              {laps.map((lap, i) => {
+                const { m:lm, s:ls, cs:lcs } = formatTime(lap.time, true);
+                const isBest  = lapTimes.length > 1 && lap.time === best;
+                const isWorst = lapTimes.length > 1 && lap.time === worst;
+                return (
+                  <div key={lap.id} style={{
+                    display:'flex', justifyContent:'space-between', alignItems:'center',
+                    padding:'13px 20px',
+                    borderBottom: i < laps.length-1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                  }}>
+                    <span style={{ fontSize:14, color:'rgba(255,255,255,0.45)', fontWeight:500 }}>
+                      Lap {laps.length - i}
+                    </span>
+                    <span style={{
+                      fontSize:15, fontWeight:500, fontVariantNumeric:'tabular-nums',
+                      color: isBest ? '#34c759' : isWorst ? '#ff453a' : 'rgba(255,255,255,0.85)',
+                    }}>{lm}:{ls}.{lcs}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── ROOT ────────────────────────────────────────────────────────────────
+    function App() {
+      const [tab, setTab] = useState('timer');
+
+      return (
+        <div style={{ minHeight:'100dvh', display:'flex', flexDirection:'column',
+          alignItems:'center', justifyContent:'flex-start' }}>
+          <Background mode={tab} active={false} />
+
+          <div style={{
+            position:'relative', zIndex:1,
+            width:'100%', maxWidth:430,
+            display:'flex', flexDirection:'column', minHeight:'100dvh',
+            animation:'mount 0.5s ease both',
+          }}>
+            {/* Header */}
+            <div style={{
+              padding:'52px 24px 12px',
+              paddingTop:'max(52px, calc(env(safe-area-inset-top, 0px) + 24px))',
+            }}>
+              <h1 style={{ fontSize:34, fontWeight:700, letterSpacing:'-0.02em', color:'#fff' }}>
+                {tab === 'timer' ? 'Timer' : 'Stopwatch'}
+              </h1>
+            </div>
+
+            {/* Content */}
+            <div style={{ flex:1, padding:'8px 24px 24px', overflowY:'auto' }}>
+              <div key={tab} style={{ animation:'fade-in 0.22s ease' }}>
+                {tab === 'timer' ? <TimerTab /> : <StopwatchTab />}
+              </div>
+            </div>
+
+            {/* Tab Bar */}
+            <div style={{
+              padding:'0 20px',
+              paddingBottom:'max(28px, calc(env(safe-area-inset-bottom, 0px) + 12px))',
+            }}>
+              <div className="glass" style={{ borderRadius:28, padding:'7px', display:'flex', gap:4 }}>
+                {[
+                  { id:'timer',     icon:'⏱', label:'Timer'     },
+                  { id:'stopwatch', icon:'🕐', label:'Stopwatch' },
+                ].map(t => (
+                  <button key={t.id} className="tab-btn" onClick={() => setTab(t.id)} style={{
+                    flex:1, padding:'10px 0', borderRadius:21,
+                    background: tab === t.id ? 'rgba(255,255,255,0.14)' : 'transparent',
+                    boxShadow: tab === t.id
+                      ? '0 1px 0 rgba(255,255,255,0.1) inset, 0 2px 8px rgba(0,0,0,0.3)'
+                      : 'none',
+                    display:'flex', flexDirection:'column', alignItems:'center', gap:3,
+                  }}>
+                    <span style={{ fontSize:20 }}>{t.icon}</span>
+                    <span style={{
+                      fontSize:11, fontWeight: tab === t.id ? 600 : 400,
+                      color: tab === t.id ? '#fff' : 'rgba(255,255,255,0.4)',
+                      letterSpacing:'0.03em',
+                      transition:'color 0.2s ease',
+                    }}>{t.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

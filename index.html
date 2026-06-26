@@ -175,6 +175,40 @@ body{
 .float-coin{position:fixed;z-index:40;font-size:22px;font-weight:800;color:#ffce3a;pointer-events:none;animation:float-up 1s ease-out forwards;text-shadow:0 2px 8px rgba(0,0,0,.5)}
 
 ::-webkit-scrollbar{display:none}
+
+/* admin */
+#hright{display:flex;align-items:center;gap:8px}
+#adminBtn{padding:8px 12px;border-radius:18px;font-size:12px;font-weight:700;letter-spacing:.01em;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.7)}
+.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;width:100%}
+.admin-grid.full{grid-template-columns:1fr}
+.admin-act{padding:13px;border-radius:14px;font-size:13px;font-weight:700;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.15);color:#fff}
+.admin-act.gold{background:rgba(255,196,0,.16);border-color:rgba(255,196,0,.32);color:#ffd75e}
+.admin-act.blue{background:rgba(10,132,255,.18);border-color:rgba(10,132,255,.4)}
+.admin-act.red{background:rgba(255,69,58,.16);border-color:rgba(255,69,58,.34);color:#ff8a82}
+.pw-input{width:100%;padding:14px;border-radius:14px;background:rgba(255,255,255,.09);border:1.5px solid rgba(255,255,255,.16);color:#fff;font-family:inherit;font-size:24px;text-align:center;letter-spacing:.3em;outline:none}
+.pw-input:focus{border-color:rgba(10,132,255,.7)}
+
+/* ---- 3D ISOMETRIC CITY ---- */
+.scene3d{
+  position:relative;width:100%;height:260px;border-radius:24px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.1);box-shadow:0 14px 36px rgba(0,0,0,.55);
+  perspective:760px;perspective-origin:50% 42%;transition:background 1.2s ease;
+}
+.scene3d .ovl{position:absolute;pointer-events:none}
+.scene3d .star{position:absolute;width:2px;height:2px;border-radius:50%;background:#fff;animation:twinkle 3s ease-in-out infinite}
+.scene3d .cloud{position:absolute;font-size:26px;opacity:.8;animation:drift linear infinite}
+.iso-cam{position:absolute;left:50%;top:54%;transform:translate(-50%,-50%);transform-style:preserve-3d}
+.iso-stage{position:relative;transform-style:preserve-3d}
+.iso-ground{position:absolute;left:0;top:0;border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.25) inset,0 30px 50px rgba(0,0,0,.5)}
+.iso-tile{position:absolute;transform-style:preserve-3d}
+.iso-tile.road{background:#2c2c33;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+.iso-tile.road .lane{position:absolute;left:50%;top:8%;width:2px;height:84%;transform:translateX(-50%);background:repeating-linear-gradient(to bottom,rgba(255,213,94,.7) 0,rgba(255,213,94,.7) 5px,transparent 5px,transparent 11px)}
+.iso-tile.road .laneH{position:absolute;top:50%;left:8%;height:2px;width:84%;transform:translateY(-50%);background:repeating-linear-gradient(to right,rgba(255,213,94,.7) 0,rgba(255,213,94,.7) 5px,transparent 5px,transparent 11px)}
+.bld{position:absolute;transform-style:preserve-3d}
+.bld .face{position:absolute;left:0;top:0;overflow:hidden}
+.bld .top{display:flex;align-items:center;justify-content:center}
+.bld .win{position:absolute;inset:0;background-size:7px 9px;background-image:radial-gradient(rgba(255,255,255,.16) 35%,transparent 38%);opacity:.5}
+.veh{position:absolute;left:0;top:0;display:flex;align-items:center;justify-content:center;will-change:transform}
 </style>
 </head>
 <body class="noselect">
@@ -182,7 +216,10 @@ body{
 <div id="app">
   <div id="header">
     <h1 id="title">Study</h1>
-    <div id="coinChip"><span>🪙</span><span class="c" id="coinVal">0</span></div>
+    <div id="hright">
+      <button id="adminBtn" class="btn">🔧 Admin</button>
+      <div id="coinChip"><span>🪙</span><span class="c" id="coinVal">0</span></div>
+    </div>
   </div>
   <div id="content"></div>
   <div id="tabbar">
@@ -207,6 +244,10 @@ body{
 const $=id=>document.getElementById(id);
 const el=(t,c,txt)=>{const e=document.createElement(t);if(c)e.className=c;if(txt!=null)e.textContent=txt;return e;};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function hexRGB(h){h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
+function shade(hex,pct){const [r,g,b]=hexRGB(hex);const f=v=>clamp(Math.round(v+(pct<0?v:255-v)*(pct/100)),0,255);return `rgb(${f(r)},${f(g)},${f(b)})`;}
+// per-era building colour
+const BCOL=['#7d6347','#a07c46','#7e8a64','#d8cba6','#8b93a4','#b6a2c8','#8f8478','#8aa3c6','#5f86c9','#9a7ad8'];
 
 /* ───────── number formatting ───────── */
 function fmt(n){
@@ -629,8 +670,9 @@ function EmpireView(){
   const banner=el('div','era-banner');
   root.appendChild(banner);
 
-  const scene=el('div','scene');
+  const scene=el('div','scene3d');
   root.appendChild(scene);
+  let vehicles=[],vehRAF=null;
 
   const powerRow=el('div','power-row');
   root.appendChild(powerRow);
@@ -643,56 +685,103 @@ function EmpireView(){
   const shop=el('div','shop');
   root.appendChild(shop);
 
+  // build one 3D cuboid that rises upward (roof + two walls)
+  function makeBuilding(s,h,emoji,col,windows){
+    const w=el('div','bld');
+    // south wall (+y edge): hinge at y=s, stands up
+    const south=el('div','face');
+    south.style.cssText=`width:${s}px;height:${h}px;transform-origin:top left;transform:translateY(${s}px) rotateX(90deg);background:linear-gradient(${shade(col,-4)},${shade(col,-24)});border:1px solid ${shade(col,-34)}`;
+    // east wall (+x edge): hinge at x=s, stands up
+    const east=el('div','face');
+    east.style.cssText=`width:${h}px;height:${s}px;transform-origin:top left;transform:translateX(${s}px) rotateY(-90deg);background:linear-gradient(${shade(col,-16)},${shade(col,-38)});border:1px solid ${shade(col,-44)}`;
+    // roof
+    const top=el('div','face top');
+    top.style.cssText=`width:${s}px;height:${s}px;transform:translateZ(${h}px);background:${shade(col,16)};border:1px solid ${shade(col,-8)};font-size:${Math.round(s*0.6)}px`;
+    top.textContent=emoji;
+    if(windows){const w1=el('div','win');south.appendChild(w1);const w2=el('div','win');east.appendChild(w2);}
+    w.appendChild(south);w.appendChild(east);w.appendChild(top);
+    return w;
+  }
+
   function renderScene(){
     const e=era();
     scene.innerHTML='';
-    const sky=el('div','sky');
-    sky.style.background=`linear-gradient(to bottom,${e.sky[0]},${e.sky[1]})`;
-    scene.appendChild(sky);
-    // stars at night
-    if(e.night){
-      for(let i=0;i<26;i++){
-        const s=el('div','star');
-        s.style.left=Math.random()*100+'%';s.style.top=Math.random()*55+'%';
-        s.style.animationDelay=(Math.random()*3)+'s';
-        scene.appendChild(s);
-      }
-    }
-    // celestial
-    const cel=el('div','celestial',e.night?'🌙':'☀️');
-    cel.style.top='16px';cel.style.right='22px';
-    scene.appendChild(cel);
-    // clouds
-    if(!e.night){
-      for(let i=0;i<2;i++){
-        const c=el('div','cloud','☁️');
-        c.style.top=(20+i*26)+'px';
-        c.style.animationDuration=(26+i*12)+'s';
-        c.style.animationDelay=(-i*10)+'s';
-        scene.appendChild(c);
-      }
-    }
-    const ground=el('div','ground');ground.style.background=`linear-gradient(to bottom,${e.ground},${e.ground}cc)`;
-    scene.appendChild(ground);
+    cancelAnimationFrame(vehRAF);vehicles=[];
+    scene.style.background=`linear-gradient(to bottom,${e.sky[0]} 0%,${e.sky[1]} 70%,${shade(e.ground,12)} 100%)`;
 
-    const city=el('div','city');
+    // sky overlays
+    if(e.night){
+      for(let i=0;i<30;i++){const st=el('div','star ovl');st.style.left=Math.random()*100+'%';st.style.top=Math.random()*48+'%';st.style.animationDelay=(Math.random()*3)+'s';scene.appendChild(st);}
+    }else{
+      for(let i=0;i<2;i++){const c=el('div','cloud ovl','☁️');c.style.top=(14+i*24)+'px';c.style.animationDuration=(30+i*14)+'s';c.style.animationDelay=(-i*12)+'s';scene.appendChild(c);}
+    }
+    const cel=el('div','ovl',e.night?'🌙':'☀️');
+    cel.style.cssText='top:14px;right:20px;font-size:30px;filter:drop-shadow(0 0 14px rgba(255,255,255,.4))';
+    scene.appendChild(cel);
+
+    const GRID=7,TS=32;const world=GRID*TS;
+    const cam=el('div','iso-cam');
+    const stage=el('div','iso-stage');
+    stage.style.width=world+'px';stage.style.height=world+'px';
+    stage.style.transform=`rotateX(60deg) rotateZ(45deg) translate(${-world/2}px,${-world/2}px)`;
+    cam.appendChild(stage);scene.appendChild(cam);
+
+    // ground
+    const ground=el('div','iso-ground');
+    ground.style.width=world+'px';ground.style.height=world+'px';
+    ground.style.background=`linear-gradient(135deg,${shade(e.ground,8)},${shade(e.ground,-14)})`;
+    stage.appendChild(ground);
+
+    // roads + plots (roads every 3rd row/col)
+    const plots=[];
+    for(let r=0;r<GRID;r++)for(let c=0;c<GRID;c++){
+      const roadR=r%3===0, roadC=c%3===0;
+      if(roadR||roadC){
+        const t=el('div','iso-tile road');
+        t.style.cssText+=`width:${TS}px;height:${TS}px;transform:translate3d(${c*TS}px,${r*TS}px,0.3px)`;
+        if(roadC)t.appendChild(el('div','lane'));
+        if(roadR)t.appendChild(el('div','laneH'));
+        stage.appendChild(t);
+      }else{plots.push({r,c});}
+    }
+
+    // flatten owned buildings into units
     const o=S.owned[S.era]||{};
-    let any=false;
-    // render buildings, biggest f first so skyline looks good
-    const list=[...e.b].sort((a,b)=>b.f-a.f);
-    list.forEach(b=>{
-      const n=Math.min(o[b.id]||0,14);
-      for(let i=0;i<n;i++){
-        any=true;
-        const span=el('span','b'+(b.f>=4?' sway':''),b.e);
-        span.style.fontSize=(22+Math.min(b.f*2,18))+'px';
-        span.style.animationDelay=(Math.random()*4)+'s';
-        city.appendChild(span);
-      }
+    const units=[];
+    e.b.forEach(b=>{const n=o[b.id]||0;for(let i=0;i<n;i++)units.push(b);});
+    const windowed=S.era>=6;
+    units.slice(0,plots.length).forEach((b,i)=>{
+      const {r,c}=plots[i];
+      const h=clamp(14+b.f*7,14,72);
+      const bld=makeBuilding(TS-7,h,b.e,BCOL[S.era],windowed);
+      bld.style.transform=`translate3d(${c*TS+3.5}px,${r*TS+3.5}px,0)`;
+      stage.appendChild(bld);
     });
-    scene.appendChild(city);
-    if(!any){
-      const hint=el('div','empty-hint','Empty land… build something to begin your civilization!');
+
+    // vehicles drive along a horizontal road (row 3)
+    if(units.length>0){
+      const roadRow=3;const vy=roadRow*TS+TS/2;
+      const VEH=e.night?['🛸','🚙']:S.era<2?['🐂','🐎']:S.era<6?['🐴','🛒']:['🚗','🚙','🚕'];
+      const count=2;
+      for(let i=0;i<count;i++){
+        const v=el('div','veh',VEH[i%VEH.length]);
+        v.style.fontSize='15px';v.style.width='20px';v.style.height='20px';
+        stage.appendChild(v);
+        vehicles.push({el:v,x:Math.random()*world,y:vy,sp:(0.25+Math.random()*0.25)*(i%2?-1:1)});
+      }
+      const drive=()=>{
+        for(const vv of vehicles){
+          vv.x+=vv.sp;
+          if(vv.x>world+10)vv.x=-10;if(vv.x<-10)vv.x=world+10;
+          vv.el.style.transform=`translate3d(${vv.x}px,${vv.y-10}px,2px) rotateZ(${vv.sp<0?180:0}deg)`;
+        }
+        vehRAF=requestAnimationFrame(drive);
+      };
+      drive();
+    }
+
+    if(units.length===0){
+      const hint=el('div','empty-hint','Empty land — build something to begin your civilization!');
       scene.appendChild(hint);
     }
   }
@@ -793,6 +882,7 @@ function EmpireView(){
 
   function refreshAll(){renderBanner();renderScene();renderPower();renderAdvance();renderShop();}
   refreshAll();
+  root._cleanup=()=>{cancelAnimationFrame(vehRAF);};
   return root;
 }
 
@@ -859,6 +949,61 @@ document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>
 
 // track global distraction count stat
 onFocusChange(v=>{if(!v&&currentTab==='study'){/* counted per-session */}});
+
+/* ═══════════ ADMIN PANEL (password 1001) ═══════════ */
+let adminUnlocked=false;
+function refreshCurrent(){updateCoinChip();showTab(currentTab);}
+function openModal(build){
+  const ov=el('div','overlay');
+  const m=el('div','modal glass');
+  build(m,()=>ov.remove());
+  ov.appendChild(m);document.body.appendChild(ov);
+  return ov;
+}
+function askPassword(){
+  openModal((m,close)=>{
+    m.appendChild(el('div','em','🔐'));
+    m.appendChild(el('h2',null,'Admin Access'));
+    m.appendChild(el('p',null,'Enter the admin password to unlock testing tools.'));
+    const inp=el('input','pw-input');inp.type='password';inp.inputMode='numeric';inp.placeholder='••••';inp.maxLength=8;
+    m.appendChild(inp);
+    const err=el('p');err.style.color='#ff8a82';err.style.minHeight='8px';err.style.fontSize='13px';m.appendChild(err);
+    const row=el('div','row');
+    const cancel=el('button','btn modal-btn','Cancel');cancel.addEventListener('click',close);
+    const ok=el('button','btn modal-btn primary','Unlock');
+    const submit=()=>{if(inp.value==='1001'){adminUnlocked=true;close();openAdmin();}else{err.textContent='Wrong password';inp.value='';inp.focus();}};
+    ok.addEventListener('click',submit);
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter')submit();});
+    row.appendChild(cancel);row.appendChild(ok);m.appendChild(row);
+    setTimeout(()=>inp.focus(),50);
+  });
+}
+function openAdmin(){
+  openModal((m,close)=>{
+    m.appendChild(el('div','em','🔧'));
+    m.appendChild(el('h2',null,'Admin Tools'));
+    m.appendChild(el('p',null,'Testing only — tweak your save freely.'));
+    const g=el('div','admin-grid');
+    const act=(label,cls,fn)=>{const b=el('button','admin-act '+(cls||''),label);b.addEventListener('click',()=>{fn();refreshCurrent();});g.appendChild(b);};
+    act('🪙 +1,000','gold',()=>addCoins(1000));
+    act('🪙 +100K','gold',()=>addCoins(100000));
+    act('🪙 +10M','gold',()=>addCoins(10000000));
+    act('🪙 +1B','gold',()=>addCoins(1e9));
+    act('⏭️ Next Age','blue',()=>{if(S.era<ERAS.length-1){S.era++;save();}});
+    act('⏮️ Prev Age','blue',()=>{if(S.era>0){S.era--;save();}});
+    act('🏗️ +3 of each','',()=>{const e=ERAS[S.era];if(!S.owned[S.era])S.owned[S.era]={};e.b.forEach(b=>{S.owned[S.era][b.id]=(S.owned[S.era][b.id]||0)+3;});save();});
+    act('🔥 +5 streak','',()=>{S.streak+=5;if(S.streak>S.bestStreak)S.bestStreak=S.streak;save();});
+    m.appendChild(g);
+    const g2=el('div','admin-grid full');
+    const wipe=el('button','admin-act red','🗑️ Reset everything');
+    wipe.addEventListener('click',()=>{S=Object.assign({},DEF,{owned:{}});save();close();refreshCurrent();});
+    g2.appendChild(wipe);
+    m.appendChild(g2);
+    const done=el('button','btn modal-btn primary','Done');done.style.width='100%';done.addEventListener('click',close);
+    m.appendChild(done);
+  });
+}
+$('adminBtn').addEventListener('click',()=>{adminUnlocked?openAdmin():askPassword();});
 
 updateCoinChip();
 showTab('study');

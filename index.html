@@ -1,745 +1,611 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Timer</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-// ─── Apple SF Pro font stack ───────────────────────────────────────────────
-const SF = `'SF Pro Rounded', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif`;
-
-// ─── Global styles injected once ──────────────────────────────────────────
-const GLOBAL_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&display=swap');
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: #000;
-    min-height: 100vh;
-    overflow: hidden;
-    font-family: ${SF};
-    -webkit-font-smoothing: antialiased;
-    user-select: none;
-  }
-
-  @keyframes pulse-ring {
-    0%   { transform: scale(1);    opacity: 0.8; }
-    50%  { transform: scale(1.04); opacity: 0.4; }
-    100% { transform: scale(1);    opacity: 0.8; }
-  }
-  @keyframes tick-bounce {
-    0%   { transform: scale(1);    }
-    15%  { transform: scale(0.97); }
-    35%  { transform: scale(1.015);}
-    60%  { transform: scale(0.998);}
-    100% { transform: scale(1);    }
-  }
-  @keyframes slide-up {
-    from { transform: translateY(20px); opacity: 0; }
-    to   { transform: translateY(0);    opacity: 1; }
-  }
-  @keyframes fade-in {
-    from { opacity: 0; transform: scale(0.96); }
-    to   { opacity: 1; transform: scale(1); }
-  }
-  @keyframes shimmer {
-    0%   { background-position: -400px 0; }
-    100% { background-position: 400px 0; }
-  }
-  @keyframes glow-pulse {
-    0%, 100% { opacity: 0.5; }
-    50%       { opacity: 1;   }
-  }
-  @keyframes spin-slow {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
-  }
-  @keyframes bounce-in {
-    0%   { transform: scale(0.8); opacity: 0; }
-    60%  { transform: scale(1.05); opacity: 1; }
-    80%  { transform: scale(0.97); }
-    100% { transform: scale(1); }
-  }
-
-  .glass {
-    background: rgba(255,255,255,0.07);
-    backdrop-filter: blur(40px) saturate(180%);
-    -webkit-backdrop-filter: blur(40px) saturate(180%);
-    border: 1px solid rgba(255,255,255,0.12);
-    box-shadow:
-      0 2px 1px rgba(255,255,255,0.08) inset,
-      0 -1px 0px rgba(255,255,255,0.04) inset,
-      0 32px 64px rgba(0,0,0,0.6),
-      0 8px 24px rgba(0,0,0,0.4);
-  }
-
-  .glass-btn {
-    background: rgba(255,255,255,0.10);
-    backdrop-filter: blur(30px) saturate(180%);
-    -webkit-backdrop-filter: blur(30px) saturate(180%);
-    border: 1px solid rgba(255,255,255,0.16);
-    box-shadow:
-      0 1px 0 rgba(255,255,255,0.12) inset,
-      0 -1px 0 rgba(0,0,0,0.3) inset,
-      0 4px 16px rgba(0,0,0,0.4),
-      0 1px 4px rgba(0,0,0,0.3);
-    transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
-    cursor: pointer;
-  }
-  .glass-btn:active {
-    transform: scale(0.94);
-    background: rgba(255,255,255,0.06);
-    box-shadow:
-      0 0 0 rgba(255,255,255,0.12) inset,
-      0 -1px 0 rgba(0,0,0,0.3) inset,
-      0 2px 8px rgba(0,0,0,0.4);
-  }
-
-  .tab-btn {
-    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    cursor: pointer;
-  }
-  .tab-btn:active { transform: scale(0.9); }
-
-  input[type=number] {
-    -moz-appearance: textfield;
-    appearance: textfield;
-  }
-  input[type=number]::-webkit-inner-spin-button,
-  input[type=number]::-webkit-outer-spin-button { display: none; }
-
-  .digit-input {
-    background: rgba(255,255,255,0.07);
-    border: 1px solid rgba(255,255,255,0.14);
-    border-radius: 16px;
-    color: #fff;
-    font-family: ${SF};
-    font-size: 42px;
-    font-weight: 300;
-    text-align: center;
-    outline: none;
-    width: 90px;
-    padding: 8px 0;
-    transition: all 0.2s ease;
-  }
-  .digit-input:focus {
-    background: rgba(255,255,255,0.12);
-    border-color: rgba(10,132,255,0.7);
-    box-shadow: 0 0 0 3px rgba(10,132,255,0.2);
-  }
-
-  ::-webkit-scrollbar { display: none; }
-`;
-
-// ─── Helpers ───────────────────────────────────────────────────────────────
-const pad = (n) => String(Math.max(0, Math.floor(n))).padStart(2, '0');
-
-function formatTime(ms, showMs = false) {
-  const total = Math.max(0, ms);
-  const h = Math.floor(total / 3600000);
-  const m = Math.floor((total % 3600000) / 60000);
-  const s = Math.floor((total % 60000) / 1000);
-  const cs = Math.floor((total % 1000) / 10);
-  if (showMs) return { h: pad(h), m: pad(m), s: pad(s), cs: pad(cs), hasH: h > 0 };
-  return { h: pad(h), m: pad(m), s: pad(s), hasH: h > 0 };
-}
-
-// ─── Animated Background ───────────────────────────────────────────────────
-function Background({ active, mode }) {
-  const color1 = mode === 'timer'
-    ? (active ? 'rgba(10,132,255,0.35)' : 'rgba(10,132,255,0.15)')
-    : (active ? 'rgba(52,199,89,0.30)'  : 'rgba(52,199,89,0.12)');
-  const color2 = mode === 'timer'
-    ? 'rgba(94,92,230,0.20)' : 'rgba(48,209,88,0.15)';
-
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 0,
-      background: `
-        radial-gradient(ellipse 70% 55% at 30% 20%, ${color1}, transparent 60%),
-        radial-gradient(ellipse 60% 50% at 75% 80%, ${color2}, transparent 60%),
-        radial-gradient(ellipse 50% 60% at 80% 10%, rgba(255,55,95,0.10), transparent 55%),
-        #050508
-      `,
-      transition: 'background 1.2s ease',
-    }}>
-      {/* Noise texture overlay */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E")`,
-        opacity: 0.6,
-      }} />
-    </div>
-  );
-}
-
-// ─── SVG Progress Ring ─────────────────────────────────────────────────────
-function ProgressRing({ progress, size = 300, isRunning, mode, finished }) {
-  const stroke = 3.5;
-  const r = (size - stroke * 2) / 2;
-  const circ = 2 * Math.PI * r;
-  const dash = circ * Math.max(0, Math.min(1, 1 - progress));
-
-  const trackColor = 'rgba(255,255,255,0.07)';
-  const arcColor = finished
-    ? '#ff453a'
-    : mode === 'timer' ? '#0a84ff' : '#34c759';
-  const glowColor = finished
-    ? 'rgba(255,69,58,0.5)'
-    : mode === 'timer' ? 'rgba(10,132,255,0.5)' : 'rgba(52,199,89,0.5)';
-
-  return (
-    <svg width={size} height={size} style={{
-      position: 'absolute',
-      top: '50%', left: '50%',
-      transform: 'translate(-50%, -50%) rotate(-90deg)',
-      filter: isRunning ? `drop-shadow(0 0 12px ${glowColor})` : 'none',
-      transition: 'filter 0.5s ease',
-    }}>
-      <defs>
-        <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor={arcColor} stopOpacity="1" />
-          <stop offset="100%" stopColor={finished ? '#ff6961' : mode === 'timer' ? '#5e5ce6' : '#30d158'} stopOpacity="0.8" />
-        </linearGradient>
-      </defs>
-      {/* Track */}
-      <circle cx={size/2} cy={size/2} r={r} fill="none"
-        stroke={trackColor} strokeWidth={stroke} />
-      {/* Progress arc */}
-      <circle cx={size/2} cy={size/2} r={r} fill="none"
-        stroke="url(#arcGrad)" strokeWidth={stroke}
-        strokeLinecap="round"
-        strokeDasharray={circ}
-        strokeDashoffset={dash}
-        style={{ transition: isRunning ? 'stroke-dashoffset 0.25s linear' : 'stroke-dashoffset 0.5s ease' }}
-      />
-      {/* Dot at progress head */}
-      {progress > 0 && progress < 1 && (
-        <circle
-          cx={size/2 + r * Math.cos((2 * Math.PI * (1 - progress)) - Math.PI/2)}
-          cy={size/2 + r * Math.sin((2 * Math.PI * (1 - progress)) - Math.PI/2)}
-          r={stroke * 1.6}
-          fill={arcColor}
-          style={{ filter: `drop-shadow(0 0 6px ${glowColor})` }}
-        />
-      )}
-    </svg>
-  );
-}
-
-// ─── Digit Scroller ────────────────────────────────────────────────────────
-function TimerDigits({ value, sub, large = false, dimmed = false }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-      <span style={{
-        fontSize: large ? 86 : 60,
-        fontWeight: 200,
-        letterSpacing: '-0.04em',
-        fontVariantNumeric: 'tabular-nums',
-        color: dimmed ? 'rgba(255,255,255,0.25)' : '#fff',
-        lineHeight: 1,
-        fontFamily: SF,
-        transition: 'color 0.3s ease, font-size 0.3s ease',
-      }}>{value}</span>
-      {sub && (
-        <span style={{
-          fontSize: 11, fontWeight: 500, letterSpacing: '0.08em',
-          color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase',
-        }}>{sub}</span>
-      )}
-    </div>
-  );
-}
-
-// ─── Preset chip ───────────────────────────────────────────────────────────
-function PresetChip({ label, onClick, active }) {
-  return (
-    <button className="glass-btn" onClick={onClick} style={{
-      padding: '8px 16px', borderRadius: 20,
-      fontSize: 14, fontWeight: 500, color: active ? '#0a84ff' : 'rgba(255,255,255,0.7)',
-      border: `1px solid ${active ? 'rgba(10,132,255,0.5)' : 'rgba(255,255,255,0.12)'}`,
-      background: active ? 'rgba(10,132,255,0.15)' : 'rgba(255,255,255,0.07)',
-      fontFamily: SF,
-      flexShrink: 0,
-    }}>{label}</button>
-  );
-}
-
-// ─── Control Button ────────────────────────────────────────────────────────
-function CtrlBtn({ label, icon, color, onTap, size = 72, disabled }) {
-  return (
-    <button className="glass-btn" onClick={onTap} disabled={disabled} style={{
-      width: size, height: size, borderRadius: size / 2,
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      justifyContent: 'center', gap: 4,
-      border: `1px solid ${color ? color + '44' : 'rgba(255,255,255,0.16)'}`,
-      background: color ? `${color}22` : 'rgba(255,255,255,0.10)',
-      opacity: disabled ? 0.35 : 1,
-      cursor: disabled ? 'not-allowed' : 'pointer',
-    }}>
-      <span style={{ fontSize: size > 60 ? 26 : 20, lineHeight: 1 }}>{icon}</span>
-      {label && <span style={{ fontSize: 10, fontWeight: 600, color: color || 'rgba(255,255,255,0.7)',
-        letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</span>}
-    </button>
-  );
-}
-
-// ─── TIMER TAB ─────────────────────────────────────────────────────────────
-function TimerTab() {
-  const [totalMs, setTotalMs] = useState(0);
-  const [remaining, setRemaining] = useState(0);
-  const [running, setRunning] = useState(false);
-  const [finished, setFinished] = useState(false);
-  const [editing, setEditing] = useState(true);
-  const [hInput, setHInput] = useState('00');
-  const [mInput, setMInput] = useState('00');
-  const [sInput, setSInput] = useState('00');
-
-  const rafRef = useRef(null);
-  const endRef = useRef(null);
-  const tickRef = useRef(false);
-
-  const PRESETS = [
-    { label: '1 min', ms: 60000 },
-    { label: '3 min', ms: 180000 },
-    { label: '5 min', ms: 300000 },
-    { label: '10 min', ms: 600000 },
-    { label: '15 min', ms: 900000 },
-    { label: '25 min', ms: 1500000 },
-  ];
-
-  const applyPreset = (ms) => {
-    stop();
-    setTotalMs(ms);
-    setRemaining(ms);
-    const h = Math.floor(ms / 3600000);
-    const m = Math.floor((ms % 3600000) / 60000);
-    const s = Math.floor((ms % 60000) / 1000);
-    setHInput(pad(h)); setMInput(pad(m)); setSInput(pad(s));
-    setEditing(false);
-    setFinished(false);
-  };
-
-  const commitInput = useCallback(() => {
-    const h = Math.max(0, parseInt(hInput) || 0);
-    const m = Math.max(0, parseInt(mInput) || 0);
-    const s = Math.max(0, parseInt(sInput) || 0);
-    const ms = (h * 3600 + m * 60 + s) * 1000;
-    setTotalMs(ms); setRemaining(ms);
-    return ms;
-  }, [hInput, mInput, sInput]);
-
-  const tick = useCallback(() => {
-    const now = Date.now();
-    const left = Math.max(0, endRef.current - now);
-    setRemaining(left);
-    if (left <= 0) {
-      setRunning(false);
-      setFinished(true);
-    } else {
-      rafRef.current = requestAnimationFrame(tick);
+    body {
+      background: #000;
+      min-height: 100dvh;
+      overflow: hidden;
+      font-family: 'SF Pro Rounded', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+      -webkit-user-select: none;
     }
-  }, []);
 
-  const start = useCallback(() => {
-    const ms = editing ? commitInput() : remaining;
-    if (!ms) return;
-    endRef.current = Date.now() + ms;
-    setRunning(true);
-    setFinished(false);
-    setEditing(false);
-    rafRef.current = requestAnimationFrame(tick);
-  }, [editing, remaining, commitInput, tick]);
+    #root { width: 100%; height: 100dvh; }
 
-  const pause = () => {
-    cancelAnimationFrame(rafRef.current);
-    setRunning(false);
-  };
+    @keyframes pulse-ring {
+      0%   { transform: scale(1);    opacity: 0.8; }
+      50%  { transform: scale(1.04); opacity: 0.4; }
+      100% { transform: scale(1);    opacity: 0.8; }
+    }
+    @keyframes slide-up {
+      from { transform: translateY(20px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    @keyframes fade-in {
+      from { opacity: 0; transform: scale(0.96); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    @keyframes glow-pulse {
+      0%, 100% { opacity: 0.5; }
+      50%       { opacity: 1;   }
+    }
+    @keyframes bounce-in {
+      0%   { transform: scale(0.85); opacity: 0; }
+      60%  { transform: scale(1.04); opacity: 1; }
+      80%  { transform: scale(0.98); }
+      100% { transform: scale(1); }
+    }
+    @keyframes mount {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
 
-  const resume = () => {
-    endRef.current = Date.now() + remaining;
-    setRunning(true);
-    rafRef.current = requestAnimationFrame(tick);
-  };
+    .glass {
+      background: rgba(255,255,255,0.07);
+      backdrop-filter: blur(40px) saturate(180%);
+      -webkit-backdrop-filter: blur(40px) saturate(180%);
+      border: 1px solid rgba(255,255,255,0.13);
+      box-shadow:
+        0 2px 1px rgba(255,255,255,0.08) inset,
+        0 -1px 0px rgba(255,255,255,0.04) inset,
+        0 32px 64px rgba(0,0,0,0.6),
+        0 8px 24px rgba(0,0,0,0.4);
+    }
 
-  const stop = () => {
-    cancelAnimationFrame(rafRef.current);
-    setRunning(false);
-    setFinished(false);
-    setEditing(true);
-    setRemaining(totalMs);
-  };
+    .glass-btn {
+      background: rgba(255,255,255,0.10);
+      backdrop-filter: blur(30px) saturate(180%);
+      -webkit-backdrop-filter: blur(30px) saturate(180%);
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.12) inset,
+        0 -1px 0 rgba(0,0,0,0.3) inset,
+        0 4px 16px rgba(0,0,0,0.4);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.12s cubic-bezier(0.34,1.56,0.64,1),
+                  background 0.15s ease,
+                  box-shadow 0.15s ease;
+    }
+    .glass-btn:active {
+      transform: scale(0.93) !important;
+      background: rgba(255,255,255,0.06);
+    }
 
-  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+    .tab-btn {
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      border: none;
+      transition: background 0.2s ease, box-shadow 0.2s ease;
+    }
+    .tab-btn:active { transform: scale(0.9); }
 
-  const { h, m, s, hasH } = formatTime(editing ? commitInput() : remaining);
-  const progress = totalMs > 0 ? remaining / totalMs : 0;
+    input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { display: none; }
 
-  const displayH = editing ? hInput : h;
-  const displayM = editing ? mInput : m;
-  const displayS = editing ? sInput : s;
+    .digit-input {
+      background: rgba(255,255,255,0.08);
+      border: 1.5px solid rgba(255,255,255,0.14);
+      border-radius: 16px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 38px;
+      font-weight: 300;
+      text-align: center;
+      outline: none;
+      width: 80px;
+      padding: 10px 0;
+      transition: all 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .digit-input:focus {
+      background: rgba(255,255,255,0.13);
+      border-color: rgba(10,132,255,0.8);
+      box-shadow: 0 0 0 3px rgba(10,132,255,0.22);
+    }
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 32, paddingBottom: 24 }}>
+    ::-webkit-scrollbar { display: none; }
+    * { -webkit-tap-highlight-color: transparent; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
 
-      {/* Ring + digits */}
-      <div style={{ position: 'relative', width: 300, height: 300 }}>
-        <ProgressRing
-          progress={editing ? 1 : progress}
-          size={300}
-          isRunning={running}
-          mode="timer"
-          finished={finished}
-        />
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
 
-        {/* Outer ambient glow when running */}
-        {running && !finished && (
-          <div style={{
-            position: 'absolute', inset: -20, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(10,132,255,0.12) 0%, transparent 70%)',
-            animation: 'glow-pulse 2s ease-in-out infinite',
-          }} />
-        )}
-        {finished && (
-          <div style={{
-            position: 'absolute', inset: -20, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(255,69,58,0.15) 0%, transparent 70%)',
-            animation: 'pulse-ring 1s ease-in-out infinite',
-          }} />
-        )}
+    const SF = `'SF Pro Rounded','SF Pro Display',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif`;
 
-        {/* Center content */}
+    const pad = n => String(Math.max(0, Math.floor(n))).padStart(2, '0');
+
+    function formatTime(ms, showMs = false) {
+      const total = Math.max(0, ms);
+      const h = Math.floor(total / 3600000);
+      const m = Math.floor((total % 3600000) / 60000);
+      const s = Math.floor((total % 60000) / 1000);
+      const cs = Math.floor((total % 1000) / 10);
+      return { h: pad(h), m: pad(m), s: pad(s), cs: pad(cs), hasH: h > 0 };
+    }
+
+    // ── Background ──────────────────────────────────────────────────────────
+    function Background({ mode, active }) {
+      const c1 = mode === 'timer'
+        ? (active ? 'rgba(10,132,255,0.38)' : 'rgba(10,132,255,0.18)')
+        : (active ? 'rgba(52,199,89,0.32)'  : 'rgba(52,199,89,0.14)');
+      const c2 = mode === 'timer' ? 'rgba(94,92,230,0.22)' : 'rgba(48,209,88,0.18)';
+      return (
         <div style={{
+          position: 'fixed', inset: 0, zIndex: 0,
+          background: `
+            radial-gradient(ellipse 70% 55% at 30% 20%, ${c1}, transparent 60%),
+            radial-gradient(ellipse 60% 50% at 75% 80%, ${c2}, transparent 60%),
+            radial-gradient(ellipse 50% 60% at 80% 10%, rgba(255,55,95,0.10), transparent 55%),
+            #050508
+          `,
+          transition: 'background 1.2s ease',
+        }} />
+      );
+    }
+
+    // ── Progress Ring ───────────────────────────────────────────────────────
+    function ProgressRing({ progress, size = 280, isRunning, mode, finished }) {
+      const stroke = 3.5;
+      const r = (size - stroke * 2) / 2;
+      const circ = 2 * Math.PI * r;
+      const dash = circ * Math.max(0, Math.min(1, 1 - progress));
+      const arcColor = finished ? '#ff453a' : mode === 'timer' ? '#0a84ff' : '#34c759';
+      const glow = finished ? 'rgba(255,69,58,0.5)' : mode === 'timer' ? 'rgba(10,132,255,0.5)' : 'rgba(52,199,89,0.5)';
+      const endColor = finished ? '#ff6961' : mode === 'timer' ? '#5e5ce6' : '#30d158';
+
+      const angle = (2 * Math.PI * (1 - progress)) - Math.PI / 2;
+      const dotX = size / 2 + r * Math.cos(angle);
+      const dotY = size / 2 + r * Math.sin(angle);
+
+      return (
+        <svg width={size} height={size} style={{
           position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
-          display: 'flex', alignItems: 'center', gap: 2,
-          animation: finished ? 'bounce-in 0.4s cubic-bezier(0.34,1.56,0.64,1)' : 'none',
+          transform: 'translate(-50%,-50%) rotate(-90deg)',
+          filter: isRunning ? `drop-shadow(0 0 10px ${glow})` : 'none',
+          transition: 'filter 0.5s ease',
         }}>
-          {editing ? (
-            /* Editable inputs */
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <input className="digit-input" type="number" value={hInput} min="0" max="99"
-                onChange={e => setHInput(e.target.value.slice(-2))}
-                onFocus={e => e.target.select()} style={{ width: 72 }} />
-              <span style={{ fontSize: 40, fontWeight: 200, color: 'rgba(255,255,255,0.3)' }}>:</span>
-              <input className="digit-input" type="number" value={mInput} min="0" max="59"
-                onChange={e => setMInput(e.target.value.slice(-2))}
-                onFocus={e => e.target.select()} style={{ width: 72 }} />
-              <span style={{ fontSize: 40, fontWeight: 200, color: 'rgba(255,255,255,0.3)' }}>:</span>
-              <input className="digit-input" type="number" value={sInput} min="0" max="59"
-                onChange={e => setSInput(e.target.value.slice(-2))}
-                onFocus={e => e.target.select()} style={{ width: 72 }} />
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {hasH && (
-                <>
-                  <TimerDigits value={h} />
-                  <span style={{ fontSize: 48, fontWeight: 200, color: 'rgba(255,255,255,0.2)', marginBottom: 4 }}>:</span>
-                </>
+          <defs>
+            <linearGradient id="ag" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={arcColor} />
+              <stop offset="100%" stopColor={endColor} stopOpacity="0.8" />
+            </linearGradient>
+          </defs>
+          <circle cx={size/2} cy={size/2} r={r} fill="none"
+            stroke="rgba(255,255,255,0.07)" strokeWidth={stroke} />
+          <circle cx={size/2} cy={size/2} r={r} fill="none"
+            stroke="url(#ag)" strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={circ}
+            strokeDashoffset={dash}
+            style={{ transition: isRunning ? 'stroke-dashoffset 0.25s linear' : 'stroke-dashoffset 0.5s ease' }}
+          />
+          {progress > 0.005 && progress < 0.998 && (
+            <circle cx={dotX} cy={dotY} r={stroke * 1.6} fill={arcColor}
+              style={{ filter: `drop-shadow(0 0 5px ${glow})` }} />
+          )}
+        </svg>
+      );
+    }
+
+    // ── Preset Chip ─────────────────────────────────────────────────────────
+    function PresetChip({ label, onClick }) {
+      return (
+        <button className="glass-btn" onClick={onClick} style={{
+          padding: '9px 18px', borderRadius: 22,
+          fontSize: 14, fontWeight: 500,
+          color: 'rgba(255,255,255,0.75)',
+          fontFamily: SF, flexShrink: 0,
+        }}>{label}</button>
+      );
+    }
+
+    // ── Control Button ──────────────────────────────────────────────────────
+    function CtrlBtn({ icon, label, onTap, color, size = 68, disabled }) {
+      return (
+        <button className="glass-btn" onClick={onTap} disabled={disabled} style={{
+          width: size, height: size, borderRadius: size / 2,
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', gap: 3,
+          border: `1px solid ${color ? color+'44' : 'rgba(255,255,255,0.16)'}`,
+          background: color ? `${color}22` : 'rgba(255,255,255,0.10)',
+          opacity: disabled ? 0.3 : 1,
+          cursor: disabled ? 'default' : 'pointer',
+        }}>
+          <span style={{ fontSize: size > 60 ? 24 : 18, lineHeight: 1 }}>{icon}</span>
+          {label && <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.06em',
+            textTransform: 'uppercase', color: color || 'rgba(255,255,255,0.6)' }}>{label}</span>}
+        </button>
+      );
+    }
+
+    // ── Big Play/Pause Button ───────────────────────────────────────────────
+    function BigBtn({ icon, color, onTap }) {
+      return (
+        <button className="glass-btn" onClick={onTap} style={{
+          width: 86, height: 86, borderRadius: 43,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 30,
+          background: color ? `${color}28` : 'rgba(255,255,255,0.12)',
+          border: `1px solid ${color ? color+'55' : 'rgba(255,255,255,0.22)'}`,
+          boxShadow: color
+            ? `0 0 30px ${color}33, 0 4px 16px rgba(0,0,0,0.5)`
+            : '0 4px 16px rgba(0,0,0,0.5)',
+        }}>{icon}</button>
+      );
+    }
+
+    // ── TIMER ───────────────────────────────────────────────────────────────
+    function TimerTab() {
+      const [totalMs, setTotalMs]   = useState(0);
+      const [remaining, setRem]     = useState(0);
+      const [running, setRunning]   = useState(false);
+      const [finished, setFinished] = useState(false);
+      const [editing, setEditing]   = useState(true);
+      const [hI, setHI] = useState('00');
+      const [mI, setMI] = useState('05');
+      const [sI, setSI] = useState('00');
+
+      const rafRef = useRef(null);
+      const endRef = useRef(null);
+
+      const PRESETS = [
+        { label: '1 min',  ms: 60000   },
+        { label: '3 min',  ms: 180000  },
+        { label: '5 min',  ms: 300000  },
+        { label: '10 min', ms: 600000  },
+        { label: '15 min', ms: 900000  },
+        { label: '25 min', ms: 1500000 },
+      ];
+
+      const msFromInput = useCallback(() => {
+        const h = Math.max(0, parseInt(hI) || 0);
+        const m = Math.max(0, parseInt(mI) || 0);
+        const s = Math.max(0, parseInt(sI) || 0);
+        return (h * 3600 + m * 60 + s) * 1000;
+      }, [hI, mI, sI]);
+
+      const doTick = useCallback(() => {
+        const left = Math.max(0, endRef.current - Date.now());
+        setRem(left);
+        if (left <= 0) { setRunning(false); setFinished(true); }
+        else rafRef.current = requestAnimationFrame(doTick);
+      }, []);
+
+      const stop = useCallback(() => {
+        cancelAnimationFrame(rafRef.current);
+        setRunning(false); setFinished(false); setEditing(true);
+        const ms = msFromInput();
+        setRem(ms); setTotalMs(ms);
+      }, [msFromInput]);
+
+      const start = useCallback((ms) => {
+        const dur = ms ?? msFromInput();
+        if (!dur) return;
+        endRef.current = Date.now() + dur;
+        setRunning(true); setFinished(false); setEditing(false);
+        setTotalMs(dur); setRem(dur);
+        rafRef.current = requestAnimationFrame(doTick);
+      }, [msFromInput, doTick]);
+
+      const pause = () => { cancelAnimationFrame(rafRef.current); setRunning(false); };
+      const resume = () => {
+        endRef.current = Date.now() + remaining;
+        setRunning(true);
+        rafRef.current = requestAnimationFrame(doTick);
+      };
+
+      const applyPreset = (ms) => {
+        cancelAnimationFrame(rafRef.current);
+        setRunning(false); setFinished(false); setEditing(false);
+        const h = Math.floor(ms / 3600000);
+        const m = Math.floor((ms % 3600000) / 60000);
+        const s = Math.floor((ms % 60000) / 1000);
+        setHI(pad(h)); setMI(pad(m)); setSI(pad(s));
+        setTotalMs(ms); setRem(ms);
+      };
+
+      useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+
+      const curMs = editing ? msFromInput() : remaining;
+      const { h, m, s, hasH } = formatTime(curMs);
+      const progress = totalMs > 0 ? remaining / totalMs : (editing ? 1 : 0);
+      const sepSize = hasH ? 44 : 60;
+
+      return (
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap: 28 }}>
+          {/* Ring */}
+          <div style={{ position:'relative', width:280, height:280 }}>
+            <ProgressRing progress={editing ? 1 : progress} size={280}
+              isRunning={running} mode="timer" finished={finished} />
+
+            {running && !finished && (
+              <div style={{ position:'absolute', inset:-24, borderRadius:'50%',
+                background:'radial-gradient(circle,rgba(10,132,255,0.10) 0%,transparent 70%)',
+                animation:'glow-pulse 2s ease-in-out infinite', pointerEvents:'none' }} />
+            )}
+            {finished && (
+              <div style={{ position:'absolute', inset:-24, borderRadius:'50%',
+                background:'radial-gradient(circle,rgba(255,69,58,0.14) 0%,transparent 70%)',
+                animation:'pulse-ring 1s ease-in-out infinite', pointerEvents:'none' }} />
+            )}
+
+            {/* Center digits */}
+            <div style={{
+              position:'absolute', top:'50%', left:'50%',
+              transform:'translate(-50%,-50%)',
+              display:'flex', flexDirection:'column', alignItems:'center', gap: 6,
+            }}>
+              {editing ? (
+                <div style={{ display:'flex', alignItems:'center', gap: 4 }}>
+                  <input className="digit-input" type="number" value={hI} min="0" max="99"
+                    onChange={e => setHI(e.target.value.replace(/\D/g,'').slice(-2))}
+                    onFocus={e => e.target.select()} style={{ width:72 }} />
+                  <span style={{ fontSize:36, fontWeight:200, color:'rgba(255,255,255,0.25)' }}>:</span>
+                  <input className="digit-input" type="number" value={mI} min="0" max="59"
+                    onChange={e => setMI(e.target.value.replace(/\D/g,'').slice(-2))}
+                    onFocus={e => e.target.select()} style={{ width:72 }} />
+                  <span style={{ fontSize:36, fontWeight:200, color:'rgba(255,255,255,0.25)' }}>:</span>
+                  <input className="digit-input" type="number" value={sI} min="0" max="59"
+                    onChange={e => setSI(e.target.value.replace(/\D/g,'').slice(-2))}
+                    onFocus={e => e.target.select()} style={{ width:72 }} />
+                </div>
+              ) : (
+                <div style={{ display:'flex', alignItems:'center', gap: 4,
+                  animation: finished ? 'bounce-in 0.4s cubic-bezier(0.34,1.56,0.64,1)' : 'none' }}>
+                  {hasH && <>
+                    <span style={{ fontSize:58, fontWeight:200, letterSpacing:'-0.04em',
+                      fontVariantNumeric:'tabular-nums', color:'#fff', lineHeight:1 }}>{h}</span>
+                    <span style={{ fontSize:sepSize, fontWeight:200, color:'rgba(255,255,255,0.22)', marginBottom:2 }}>:</span>
+                  </>}
+                  <span style={{ fontSize: hasH ? 58 : 78, fontWeight:200, letterSpacing:'-0.04em',
+                    fontVariantNumeric:'tabular-nums', color: finished ? '#ff453a' : '#fff', lineHeight:1,
+                    transition:'color 0.3s ease' }}>{m}</span>
+                  <span style={{ fontSize:sepSize, fontWeight:200, color:'rgba(255,255,255,0.22)', marginBottom:2 }}>:</span>
+                  <span style={{ fontSize: hasH ? 58 : 78, fontWeight:200, letterSpacing:'-0.04em',
+                    fontVariantNumeric:'tabular-nums', color: finished ? '#ff453a' : '#fff', lineHeight:1,
+                    transition:'color 0.3s ease' }}>{s}</span>
+                </div>
               )}
-              <TimerDigits value={m} large={!hasH} />
-              <span style={{ fontSize: hasH ? 48 : 64, fontWeight: 200, color: 'rgba(255,255,255,0.2)', marginBottom: 4 }}>:</span>
-              <TimerDigits value={s} large={!hasH} />
+              {finished && (
+                <span style={{ fontSize:12, fontWeight:600, letterSpacing:'0.1em',
+                  color:'#ff453a', textTransform:'uppercase', animation:'fade-in 0.3s ease' }}>
+                  Time's Up
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Presets */}
+          {(editing || (!running && !finished)) && (
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'center',
+              maxWidth:340, animation:'slide-up 0.3s ease' }}>
+              {PRESETS.map(p => <PresetChip key={p.ms} label={p.label} onClick={() => applyPreset(p.ms)} />)}
+            </div>
+          )}
+
+          {/* Controls */}
+          <div style={{ display:'flex', gap:20, alignItems:'center' }}>
+            {(finished || !running) && (
+              <CtrlBtn icon="↩" label="Reset" onTap={stop}
+                disabled={!totalMs && editing && !msFromInput()} color={finished ? '#ff453a' : undefined} />
+            )}
+
+            {!running
+              ? <BigBtn icon="▶" color="#0a84ff"
+                  onTap={() => editing ? start() : (remaining < totalMs ? resume() : start())} />
+              : <BigBtn icon="⏸" onTap={pause} />
+            }
+
+            {running && <CtrlBtn icon="⏹" label="Stop" onTap={stop} color="#ff453a" />}
+          </div>
+        </div>
+      );
+    }
+
+    // ── STOPWATCH ───────────────────────────────────────────────────────────
+    function StopwatchTab() {
+      const [elapsed, setElapsed] = useState(0);
+      const [running, setRunning] = useState(false);
+      const [laps, setLaps]       = useState([]);
+
+      const rafRef    = useRef(null);
+      const startRef  = useRef(null);
+      const offsetRef = useRef(0);
+
+      const doTick = useCallback(() => {
+        setElapsed(offsetRef.current + (Date.now() - startRef.current));
+        rafRef.current = requestAnimationFrame(doTick);
+      }, []);
+
+      const start = () => {
+        startRef.current = Date.now();
+        setRunning(true);
+        rafRef.current = requestAnimationFrame(doTick);
+      };
+      const pause = () => {
+        cancelAnimationFrame(rafRef.current);
+        offsetRef.current += Date.now() - startRef.current;
+        setRunning(false);
+      };
+      const reset = () => {
+        cancelAnimationFrame(rafRef.current);
+        offsetRef.current = 0;
+        setElapsed(0); setRunning(false); setLaps([]);
+      };
+      const lap = () => {
+        const prev = laps[0]?.cumulative ?? 0;
+        setLaps(l => [{ time: elapsed - prev, cumulative: elapsed, id: l.length }, ...l]);
+      };
+
+      useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+
+      const { h, m, s, cs, hasH } = formatTime(elapsed, true);
+      const lapTimes = laps.map(l => l.time);
+      const best  = lapTimes.length > 1 ? Math.min(...lapTimes) : null;
+      const worst = lapTimes.length > 1 ? Math.max(...lapTimes) : null;
+
+      return (
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:28 }}>
+          {/* Ring */}
+          <div style={{ position:'relative', width:280, height:280 }}>
+            <ProgressRing progress={0} size={280} isRunning={running} mode="stopwatch" />
+            {running && (
+              <div style={{ position:'absolute', inset:-24, borderRadius:'50%',
+                background:'radial-gradient(circle,rgba(52,199,89,0.09) 0%,transparent 70%)',
+                animation:'glow-pulse 1.5s ease-in-out infinite', pointerEvents:'none' }} />
+            )}
+            <div style={{ position:'absolute', top:'50%', left:'50%',
+              transform:'translate(-50%,-50%)',
+              display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                {hasH && <>
+                  <span style={{ fontSize:58, fontWeight:200, letterSpacing:'-0.04em',
+                    fontVariantNumeric:'tabular-nums', color:'#fff', lineHeight:1 }}>{h}</span>
+                  <span style={{ fontSize:44, fontWeight:200, color:'rgba(255,255,255,0.22)', marginBottom:2 }}>:</span>
+                </>}
+                <span style={{ fontSize: hasH ? 58 : 78, fontWeight:200, letterSpacing:'-0.04em',
+                  fontVariantNumeric:'tabular-nums', color:'#fff', lineHeight:1 }}>{m}</span>
+                <span style={{ fontSize: hasH ? 44 : 60, fontWeight:200, color:'rgba(255,255,255,0.22)', marginBottom:2 }}>:</span>
+                <span style={{ fontSize: hasH ? 58 : 78, fontWeight:200, letterSpacing:'-0.04em',
+                  fontVariantNumeric:'tabular-nums', color:'#fff', lineHeight:1 }}>{s}</span>
+              </div>
+              <span style={{ fontSize:26, fontWeight:300, letterSpacing:'0.02em',
+                color:'rgba(255,255,255,0.4)', fontVariantNumeric:'tabular-nums' }}>.{cs}</span>
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div style={{ display:'flex', gap:20, alignItems:'center' }}>
+            {running ? (
+              <>
+                <CtrlBtn icon="⊙" label="Lap" onTap={lap} />
+                <BigBtn icon="⏸" onTap={pause} />
+              </>
+            ) : (
+              <>
+                <CtrlBtn icon="↩" label="Reset" onTap={reset} disabled={elapsed === 0} />
+                <BigBtn icon="▶" color="#34c759" onTap={start} />
+              </>
+            )}
+          </div>
+
+          {/* Laps */}
+          {laps.length > 0 && (
+            <div className="glass" style={{
+              width:'100%', maxWidth:340, borderRadius:22,
+              overflow:'hidden', maxHeight:200, overflowY:'auto',
+              animation:'slide-up 0.3s ease',
+            }}>
+              {laps.map((lap, i) => {
+                const { m:lm, s:ls, cs:lcs } = formatTime(lap.time, true);
+                const isBest  = lapTimes.length > 1 && lap.time === best;
+                const isWorst = lapTimes.length > 1 && lap.time === worst;
+                return (
+                  <div key={lap.id} style={{
+                    display:'flex', justifyContent:'space-between', alignItems:'center',
+                    padding:'13px 20px',
+                    borderBottom: i < laps.length-1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                  }}>
+                    <span style={{ fontSize:14, color:'rgba(255,255,255,0.45)', fontWeight:500 }}>
+                      Lap {laps.length - i}
+                    </span>
+                    <span style={{
+                      fontSize:15, fontWeight:500, fontVariantNumeric:'tabular-nums',
+                      color: isBest ? '#34c759' : isWorst ? '#ff453a' : 'rgba(255,255,255,0.85)',
+                    }}>{lm}:{ls}.{lcs}</span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
+      );
+    }
 
-        {/* Finished label */}
-        {finished && (
+    // ── ROOT ────────────────────────────────────────────────────────────────
+    function App() {
+      const [tab, setTab] = useState('timer');
+
+      return (
+        <div style={{ minHeight:'100dvh', display:'flex', flexDirection:'column',
+          alignItems:'center', justifyContent:'flex-start' }}>
+          <Background mode={tab} active={false} />
+
           <div style={{
-            position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)',
-            fontSize: 13, fontWeight: 600, letterSpacing: '0.1em',
-            color: '#ff453a', textTransform: 'uppercase',
-            animation: 'fade-in 0.3s ease',
-          }}>Time's Up</div>
-        )}
-      </div>
-
-      {/* Presets */}
-      {(editing || (!running && !finished)) && (
-        <div style={{
-          display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center',
-          maxWidth: 360, animation: 'slide-up 0.3s ease',
-        }}>
-          {PRESETS.map(p => (
-            <PresetChip key={p.ms} label={p.label} onClick={() => applyPreset(p.ms)} />
-          ))}
-        </div>
-      )}
-
-      {/* Controls */}
-      <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-        {!running && !finished && (
-          <CtrlBtn icon="↩" label="Reset" onTap={stop} disabled={!totalMs && editing} />
-        )}
-        {finished && (
-          <CtrlBtn icon="↩" label="Reset" onTap={stop} color="#ff453a" />
-        )}
-
-        {/* Main action */}
-        {!running ? (
-          <button className="glass-btn" onClick={finished ? stop : (editing ? start : (remaining < totalMs ? resume : start))}
-            style={{
-              width: 88, height: 88, borderRadius: 44,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 32,
-              background: finished ? 'rgba(255,69,58,0.25)' : 'rgba(10,132,255,0.25)',
-              border: `1px solid ${finished ? 'rgba(255,69,58,0.5)' : 'rgba(10,132,255,0.5)'}`,
-              boxShadow: finished
-                ? '0 0 32px rgba(255,69,58,0.3), 0 4px 16px rgba(0,0,0,0.4)'
-                : '0 0 32px rgba(10,132,255,0.25), 0 4px 16px rgba(0,0,0,0.4)',
+            position:'relative', zIndex:1,
+            width:'100%', maxWidth:430,
+            display:'flex', flexDirection:'column', minHeight:'100dvh',
+            animation:'mount 0.5s ease both',
+          }}>
+            {/* Header */}
+            <div style={{
+              padding:'52px 24px 12px',
+              paddingTop:'max(52px, calc(env(safe-area-inset-top, 0px) + 24px))',
             }}>
-            {finished ? '↩' : '▶'}
-          </button>
-        ) : (
-          <button className="glass-btn" onClick={pause} style={{
-            width: 88, height: 88, borderRadius: 44,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 28,
-            background: 'rgba(255,255,255,0.12)',
-            border: '1px solid rgba(255,255,255,0.2)',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-          }}>⏸</button>
-        )}
+              <h1 style={{ fontSize:34, fontWeight:700, letterSpacing:'-0.02em', color:'#fff' }}>
+                {tab === 'timer' ? 'Timer' : 'Stopwatch'}
+              </h1>
+            </div>
 
-        {running && (
-          <CtrlBtn icon="⏹" label="Stop" onTap={stop} color="#ff453a" />
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── STOPWATCH TAB ─────────────────────────────────────────────────────────
-function StopwatchTab() {
-  const [elapsed, setElapsed] = useState(0);
-  const [running, setRunning] = useState(false);
-  const [laps, setLaps] = useState([]);
-
-  const rafRef = useRef(null);
-  const startRef = useRef(null);
-  const offsetRef = useRef(0);
-
-  const tick = useCallback(() => {
-    setElapsed(offsetRef.current + (Date.now() - startRef.current));
-    rafRef.current = requestAnimationFrame(tick);
-  }, []);
-
-  const start = () => {
-    startRef.current = Date.now();
-    setRunning(true);
-    rafRef.current = requestAnimationFrame(tick);
-  };
-
-  const pause = () => {
-    cancelAnimationFrame(rafRef.current);
-    offsetRef.current += Date.now() - startRef.current;
-    setRunning(false);
-  };
-
-  const reset = () => {
-    cancelAnimationFrame(rafRef.current);
-    offsetRef.current = 0;
-    setElapsed(0);
-    setRunning(false);
-    setLaps([]);
-  };
-
-  const lap = () => {
-    const lapTime = elapsed - (laps[0]?.cumulative ?? 0);
-    setLaps(prev => [{ time: lapTime, cumulative: elapsed, id: prev.length }, ...prev]);
-  };
-
-  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
-
-  const { h, m, s, cs, hasH } = formatTime(elapsed, true);
-
-  // Best/worst lap
-  const lapTimes = laps.map(l => l.time);
-  const best = lapTimes.length > 1 ? Math.min(...lapTimes) : null;
-  const worst = lapTimes.length > 1 ? Math.max(...lapTimes) : null;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28 }}>
-      {/* Time display */}
-      <div style={{ position: 'relative', width: 300, height: 300 }}>
-        <ProgressRing progress={0} size={300} isRunning={running} mode="stopwatch" />
-
-        {running && (
-          <div style={{
-            position: 'absolute', inset: -20, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(52,199,89,0.10) 0%, transparent 70%)',
-            animation: 'glow-pulse 1.5s ease-in-out infinite',
-          }} />
-        )}
-
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {hasH && (
-              <>
-                <TimerDigits value={h} />
-                <span style={{ fontSize: 52, fontWeight: 200, color: 'rgba(255,255,255,0.2)', marginBottom: 4 }}>:</span>
-              </>
-            )}
-            <TimerDigits value={m} large={!hasH} />
-            <span style={{ fontSize: hasH ? 52 : 68, fontWeight: 200, color: 'rgba(255,255,255,0.2)', marginBottom: 4 }}>:</span>
-            <TimerDigits value={s} large={!hasH} />
-          </div>
-          <span style={{
-            fontSize: 28, fontWeight: 300, letterSpacing: '0.02em',
-            color: 'rgba(255,255,255,0.45)', fontVariantNumeric: 'tabular-nums',
-          }}>.{cs}</span>
-        </div>
-      </div>
-
-      {/* Controls */}
-      <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-        {running ? (
-          <>
-            <CtrlBtn icon="⊙" label="Lap" onTap={lap} />
-            <button className="glass-btn" onClick={pause} style={{
-              width: 88, height: 88, borderRadius: 44,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28,
-              background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-            }}>⏸</button>
-          </>
-        ) : (
-          <>
-            <CtrlBtn icon="↩" label="Reset" onTap={reset} disabled={elapsed === 0} />
-            <button className="glass-btn" onClick={start} style={{
-              width: 88, height: 88, borderRadius: 44,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32,
-              background: 'rgba(52,199,89,0.25)', border: '1px solid rgba(52,199,89,0.5)',
-              boxShadow: '0 0 32px rgba(52,199,89,0.2), 0 4px 16px rgba(0,0,0,0.4)',
-            }}>▶</button>
-          </>
-        )}
-      </div>
-
-      {/* Laps */}
-      {laps.length > 0 && (
-        <div className="glass" style={{
-          width: '100%', maxWidth: 360, borderRadius: 24, overflow: 'hidden',
-          maxHeight: 220, overflowY: 'auto', animation: 'slide-up 0.3s ease',
-        }}>
-          {laps.map((lap, i) => {
-            const { m: lm, s: ls, cs: lcs } = formatTime(lap.time, true);
-            const isBest = lapTimes.length > 1 && lap.time === best;
-            const isWorst = lapTimes.length > 1 && lap.time === worst;
-            return (
-              <div key={lap.id} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '12px 20px',
-                borderBottom: i < laps.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
-              }}>
-                <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>
-                  Lap {laps.length - i}
-                </span>
-                <span style={{
-                  fontSize: 15, fontWeight: 500,
-                  fontVariantNumeric: 'tabular-nums', letterSpacing: '0.02em',
-                  color: isBest ? '#34c759' : isWorst ? '#ff453a' : 'rgba(255,255,255,0.85)',
-                }}>
-                  {lm}:{ls}.{lcs}
-                </span>
+            {/* Content */}
+            <div style={{ flex:1, padding:'8px 24px 24px', overflowY:'auto' }}>
+              <div key={tab} style={{ animation:'fade-in 0.22s ease' }}>
+                {tab === 'timer' ? <TimerTab /> : <StopwatchTab />}
               </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
+            </div>
 
-// ─── ROOT ──────────────────────────────────────────────────────────────────
-export default function App() {
-  const [tab, setTab] = useState('timer');
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    // Inject global CSS
-    const style = document.createElement('style');
-    style.textContent = GLOBAL_CSS;
-    document.head.appendChild(style);
-    setTimeout(() => setMounted(true), 60);
-    return () => document.head.removeChild(style);
-  }, []);
-
-  return (
-    <div style={{
-      minHeight: '100dvh', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'flex-start',
-      paddingTop: 'env(safe-area-inset-top, 0px)',
-    }}>
-      <Background active={false} mode={tab} />
-
-      <div style={{
-        position: 'relative', zIndex: 1,
-        width: '100%', maxWidth: 430,
-        display: 'flex', flexDirection: 'column', minHeight: '100dvh',
-        opacity: mounted ? 1 : 0,
-        transform: mounted ? 'translateY(0)' : 'translateY(12px)',
-        transition: 'opacity 0.5s ease, transform 0.5s ease',
-      }}>
-        {/* Header */}
-        <div style={{
-          padding: '56px 0 16px',
-          textAlign: 'center',
-        }}>
-          <h1 style={{
-            fontSize: 34, fontWeight: 700, letterSpacing: '-0.02em',
-            color: '#fff', fontFamily: SF,
-          }}>
-            {tab === 'timer' ? 'Timer' : 'Stopwatch'}
-          </h1>
-        </div>
-
-        {/* Content */}
-        <div style={{ flex: 1, padding: '8px 24px 24px', overflowY: 'auto' }}>
-          <div key={tab} style={{ animation: 'fade-in 0.25s ease' }}>
-            {tab === 'timer' ? <TimerTab /> : <StopwatchTab />}
+            {/* Tab Bar */}
+            <div style={{
+              padding:'0 20px',
+              paddingBottom:'max(28px, calc(env(safe-area-inset-bottom, 0px) + 12px))',
+            }}>
+              <div className="glass" style={{ borderRadius:28, padding:'7px', display:'flex', gap:4 }}>
+                {[
+                  { id:'timer',     icon:'⏱', label:'Timer'     },
+                  { id:'stopwatch', icon:'🕐', label:'Stopwatch' },
+                ].map(t => (
+                  <button key={t.id} className="tab-btn" onClick={() => setTab(t.id)} style={{
+                    flex:1, padding:'10px 0', borderRadius:21,
+                    background: tab === t.id ? 'rgba(255,255,255,0.14)' : 'transparent',
+                    boxShadow: tab === t.id
+                      ? '0 1px 0 rgba(255,255,255,0.1) inset, 0 2px 8px rgba(0,0,0,0.3)'
+                      : 'none',
+                    display:'flex', flexDirection:'column', alignItems:'center', gap:3,
+                  }}>
+                    <span style={{ fontSize:20 }}>{t.icon}</span>
+                    <span style={{
+                      fontSize:11, fontWeight: tab === t.id ? 600 : 400,
+                      color: tab === t.id ? '#fff' : 'rgba(255,255,255,0.4)',
+                      letterSpacing:'0.03em',
+                      transition:'color 0.2s ease',
+                    }}>{t.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
+      );
+    }
 
-        {/* Tab Bar */}
-        <div style={{
-          padding: '0 24px 32px',
-          paddingBottom: 'max(32px, env(safe-area-inset-bottom, 32px))',
-        }}>
-          <div className="glass" style={{
-            borderRadius: 28, padding: '8px',
-            display: 'flex', gap: 4,
-          }}>
-            {[
-              { id: 'timer',     icon: '⏱', label: 'Timer' },
-              { id: 'stopwatch', icon: '🕐', label: 'Stopwatch' },
-            ].map(t => (
-              <button key={t.id} className="tab-btn" onClick={() => setTab(t.id)} style={{
-                flex: 1, padding: '10px 0', borderRadius: 20, border: 'none',
-                cursor: 'pointer', fontFamily: SF,
-                background: tab === t.id
-                  ? 'rgba(255,255,255,0.14)'
-                  : 'transparent',
-                boxShadow: tab === t.id
-                  ? '0 1px 0 rgba(255,255,255,0.1) inset, 0 2px 8px rgba(0,0,0,0.3)'
-                  : 'none',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                transition: 'background 0.2s ease, box-shadow 0.2s ease',
-              }}>
-                <span style={{ fontSize: 20 }}>{t.icon}</span>
-                <span style={{
-                  fontSize: 11, fontWeight: tab === t.id ? 600 : 400,
-                  color: tab === t.id ? '#fff' : 'rgba(255,255,255,0.45)',
-                  letterSpacing: '0.03em',
-                  transition: 'color 0.2s ease, font-weight 0.2s ease',
-                }}>{t.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

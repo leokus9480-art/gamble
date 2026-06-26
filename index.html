@@ -1,611 +1,613 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>Timer</title>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>Timer</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#050508}
+body{
+  font-family:'SF Pro Rounded','SF Pro Display',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;
+  -webkit-font-smoothing:antialiased;
+  user-select:none;-webkit-user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  color:#fff;
+}
+#bg{
+  position:fixed;inset:0;z-index:0;
+  transition:background 1.2s ease;
+}
+#app{
+  position:relative;z-index:1;
+  width:100%;max-width:430px;
+  min-height:100dvh;
+  margin:0 auto;
+  display:flex;flex-direction:column;
+  opacity:0;animation:mount .5s ease .05s forwards;
+}
+@keyframes mount{to{opacity:1}}
+@keyframes fade-in{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+@keyframes slide-up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes glow-pulse{0%,100%{opacity:.45}50%{opacity:.9}}
+@keyframes pulse-ring{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.05);opacity:.35}}
+@keyframes bounce-in{0%{transform:scale(.85);opacity:0}60%{transform:scale(1.04)}80%{transform:scale(.98)}100%{transform:scale(1);opacity:1}}
 
-    body {
-      background: #000;
-      min-height: 100dvh;
-      overflow: hidden;
-      font-family: 'SF Pro Rounded', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-      -webkit-font-smoothing: antialiased;
-      user-select: none;
-      -webkit-user-select: none;
-    }
+/* Glass */
+.glass{
+  background:rgba(255,255,255,.072);
+  backdrop-filter:blur(40px) saturate(180%);
+  -webkit-backdrop-filter:blur(40px) saturate(180%);
+  border:1px solid rgba(255,255,255,.13);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,.10),
+    inset 0 -1px 0 rgba(255,255,255,.04),
+    0 24px 48px rgba(0,0,0,.55),
+    0 8px 20px rgba(0,0,0,.35);
+}
+.glass-btn{
+  background:rgba(255,255,255,.10);
+  backdrop-filter:blur(30px) saturate(180%);
+  -webkit-backdrop-filter:blur(30px) saturate(180%);
+  border:1px solid rgba(255,255,255,.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.12),
+    inset 0 -1px 0 rgba(0,0,0,.25),
+    0 4px 14px rgba(0,0,0,.4);
+  cursor:pointer;
+  transition:transform .12s cubic-bezier(.34,1.56,.64,1),background .12s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.glass-btn:active{transform:scale(.92)!important;background:rgba(255,255,255,.06)}
 
-    #root { width: 100%; height: 100dvh; }
+/* Header */
+#header{padding:max(52px,calc(env(safe-area-inset-top,0px) + 20px)) 24px 10px}
+#header h1{font-size:34px;font-weight:700;letter-spacing:-.02em}
 
-    @keyframes pulse-ring {
-      0%   { transform: scale(1);    opacity: 0.8; }
-      50%  { transform: scale(1.04); opacity: 0.4; }
-      100% { transform: scale(1);    opacity: 0.8; }
-    }
-    @keyframes slide-up {
-      from { transform: translateY(20px); opacity: 0; }
-      to   { transform: translateY(0);    opacity: 1; }
-    }
-    @keyframes fade-in {
-      from { opacity: 0; transform: scale(0.96); }
-      to   { opacity: 1; transform: scale(1); }
-    }
-    @keyframes glow-pulse {
-      0%, 100% { opacity: 0.5; }
-      50%       { opacity: 1;   }
-    }
-    @keyframes bounce-in {
-      0%   { transform: scale(0.85); opacity: 0; }
-      60%  { transform: scale(1.04); opacity: 1; }
-      80%  { transform: scale(0.98); }
-      100% { transform: scale(1); }
-    }
-    @keyframes mount {
-      from { opacity: 0; transform: translateY(16px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+/* Content */
+#content{flex:1;padding:8px 24px 20px;overflow-y:auto;display:flex;flex-direction:column;align-items:center;gap:28px}
 
-    .glass {
-      background: rgba(255,255,255,0.07);
-      backdrop-filter: blur(40px) saturate(180%);
-      -webkit-backdrop-filter: blur(40px) saturate(180%);
-      border: 1px solid rgba(255,255,255,0.13);
-      box-shadow:
-        0 2px 1px rgba(255,255,255,0.08) inset,
-        0 -1px 0px rgba(255,255,255,0.04) inset,
-        0 32px 64px rgba(0,0,0,0.6),
-        0 8px 24px rgba(0,0,0,0.4);
-    }
+/* Tab bar */
+#tabbar{padding:0 20px max(28px,calc(env(safe-area-inset-bottom,0px)+10px))}
+#tabbar .glass{border-radius:28px;padding:7px;display:flex;gap:4px}
+.tab-btn{
+  flex:1;padding:10px 0;border-radius:21px;border:none;
+  background:transparent;color:rgba(255,255,255,.4);
+  font-family:inherit;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  transition:background .2s ease,box-shadow .2s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.tab-btn.active{
+  background:rgba(255,255,255,.14);color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 2px 8px rgba(0,0,0,.3);
+}
+.tab-btn span.icon{font-size:20px}
+.tab-btn span.lbl{font-size:11px;font-weight:400;letter-spacing:.03em}
+.tab-btn.active span.lbl{font-weight:600}
 
-    .glass-btn {
-      background: rgba(255,255,255,0.10);
-      backdrop-filter: blur(30px) saturate(180%);
-      -webkit-backdrop-filter: blur(30px) saturate(180%);
-      border: 1px solid rgba(255,255,255,0.16);
-      box-shadow:
-        0 1px 0 rgba(255,255,255,0.12) inset,
-        0 -1px 0 rgba(0,0,0,0.3) inset,
-        0 4px 16px rgba(0,0,0,0.4);
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-      transition: transform 0.12s cubic-bezier(0.34,1.56,0.64,1),
-                  background 0.15s ease,
-                  box-shadow 0.15s ease;
-    }
-    .glass-btn:active {
-      transform: scale(0.93) !important;
-      background: rgba(255,255,255,0.06);
-    }
+/* Ring container */
+.ring-wrap{position:relative;width:280px;height:280px;flex-shrink:0}
+.ring-wrap svg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg)}
+.ring-center{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+}
+.glow-orb{
+  position:absolute;inset:-24px;border-radius:50%;pointer-events:none;
+}
 
-    .tab-btn {
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-      border: none;
-      transition: background 0.2s ease, box-shadow 0.2s ease;
-    }
-    .tab-btn:active { transform: scale(0.9); }
+/* Digits */
+.digits{display:flex;align-items:center;gap:3px}
+.digit{font-size:78px;font-weight:200;letter-spacing:-.04em;font-variant-numeric:tabular-nums;line-height:1;transition:color .3s ease}
+.digit.sm{font-size:58px}
+.sep{font-size:60px;font-weight:200;color:rgba(255,255,255,.22);margin-bottom:2px}
+.sep.sm{font-size:44px}
+.sub-ms{font-size:26px;font-weight:300;letter-spacing:.02em;color:rgba(255,255,255,.4);font-variant-numeric:tabular-nums}
+.label-done{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#ff453a;animation:fade-in .3s ease}
 
-    input[type=number] { -moz-appearance: textfield; appearance: textfield; }
-    input[type=number]::-webkit-inner-spin-button,
-    input[type=number]::-webkit-outer-spin-button { display: none; }
+/* Edit inputs */
+.edit-row{display:flex;align-items:center;gap:5px}
+.digit-input{
+  width:74px;padding:10px 0;
+  background:rgba(255,255,255,.09);
+  border:1.5px solid rgba(255,255,255,.15);
+  border-radius:16px;
+  color:#fff;font-family:inherit;
+  font-size:36px;font-weight:300;text-align:center;
+  outline:none;
+  -moz-appearance:textfield;appearance:textfield;
+  transition:border-color .2s ease,background .2s ease,box-shadow .2s ease;
+}
+.digit-input:focus{
+  background:rgba(255,255,255,.14);
+  border-color:rgba(10,132,255,.8);
+  box-shadow:0 0 0 3px rgba(10,132,255,.22);
+}
+.digit-input::-webkit-inner-spin-button,.digit-input::-webkit-outer-spin-button{display:none}
+.edit-sep{font-size:34px;font-weight:200;color:rgba(255,255,255,.25)}
 
-    .digit-input {
-      background: rgba(255,255,255,0.08);
-      border: 1.5px solid rgba(255,255,255,0.14);
-      border-radius: 16px;
-      color: #fff;
-      font-family: inherit;
-      font-size: 38px;
-      font-weight: 300;
-      text-align: center;
-      outline: none;
-      width: 80px;
-      padding: 10px 0;
-      transition: all 0.2s ease;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .digit-input:focus {
-      background: rgba(255,255,255,0.13);
-      border-color: rgba(10,132,255,0.8);
-      box-shadow: 0 0 0 3px rgba(10,132,255,0.22);
-    }
+/* Presets */
+.presets{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:340px;animation:slide-up .3s ease}
+.preset-btn{
+  padding:9px 18px;border-radius:22px;
+  font-size:14px;font-weight:500;color:rgba(255,255,255,.75);
+  font-family:inherit;
+}
 
-    ::-webkit-scrollbar { display: none; }
-    * { -webkit-tap-highlight-color: transparent; }
-  </style>
+/* Controls */
+.controls{display:flex;gap:20px;align-items:center}
+.ctrl-btn{
+  width:68px;height:68px;border-radius:34px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  font-family:inherit;
+}
+.ctrl-btn .ci{font-size:22px;line-height:1}
+.ctrl-btn .cl{font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.big-btn{
+  width:86px;height:86px;border-radius:43px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:30px;
+  font-family:inherit;
+}
+
+/* Laps */
+.laps{
+  width:100%;max-width:340px;
+  border-radius:22px;overflow:hidden;
+  max-height:200px;overflow-y:auto;
+  animation:slide-up .3s ease;
+}
+.lap-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:13px 20px;
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.lap-row:last-child{border-bottom:none}
+.lap-num{font-size:14px;color:rgba(255,255,255,.45);font-weight:500}
+.lap-time{font-size:15px;font-weight:500;font-variant-numeric:tabular-nums}
+
+::-webkit-scrollbar{display:none}
+</style>
 </head>
 <body>
-  <div id="root"></div>
+<div id="bg"></div>
+<div id="app">
+  <div id="header"><h1>Timer</h1></div>
+  <div id="content"></div>
+  <div id="tabbar">
+    <div class="glass">
+      <button class="tab-btn active" data-tab="timer">
+        <span class="icon">⏱</span><span class="lbl">Timer</span>
+      </button>
+      <button class="tab-btn" data-tab="stopwatch">
+        <span class="icon">🕐</span><span class="lbl">Stopwatch</span>
+      </button>
+    </div>
+  </div>
+</div>
 
-  <script type="text/babel">
-    const { useState, useEffect, useRef, useCallback } = React;
+<script>
+(function(){
+'use strict';
 
-    const SF = `'SF Pro Rounded','SF Pro Display',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif`;
+const $ = id => document.getElementById(id);
+const pad = n => String(Math.max(0,Math.floor(n))).padStart(2,'0');
 
-    const pad = n => String(Math.max(0, Math.floor(n))).padStart(2, '0');
+function formatTime(ms, showMs){
+  const t = Math.max(0, ms);
+  const h = Math.floor(t/3600000);
+  const m = Math.floor((t%3600000)/60000);
+  const s = Math.floor((t%60000)/1000);
+  const cs = Math.floor((t%1000)/10);
+  return {h:pad(h),m:pad(m),s:pad(s),cs:pad(cs),hasH:h>0};
+}
 
-    function formatTime(ms, showMs = false) {
-      const total = Math.max(0, ms);
-      const h = Math.floor(total / 3600000);
-      const m = Math.floor((total % 3600000) / 60000);
-      const s = Math.floor((total % 60000) / 1000);
-      const cs = Math.floor((total % 1000) / 10);
-      return { h: pad(h), m: pad(m), s: pad(s), cs: pad(cs), hasH: h > 0 };
+// ── Background ──────────────────────────────────────────────────────────────
+function setBg(mode, active){
+  const c1 = mode==='timer'
+    ? (active?'rgba(10,132,255,.38)':'rgba(10,132,255,.18)')
+    : (active?'rgba(52,199,89,.32)':'rgba(52,199,89,.14)');
+  const c2 = mode==='timer'?'rgba(94,92,230,.22)':'rgba(48,209,88,.18)';
+  $('bg').style.background = `
+    radial-gradient(ellipse 70% 55% at 30% 20%,${c1},transparent 60%),
+    radial-gradient(ellipse 60% 50% at 75% 80%,${c2},transparent 60%),
+    radial-gradient(ellipse 50% 60% at 80% 10%,rgba(255,55,95,.10),transparent 55%),
+    #050508`;
+}
+
+// ── SVG Ring ────────────────────────────────────────────────────────────────
+function buildRing(id){
+  const size=280, stroke=3.5;
+  const r=(size-stroke*2)/2;
+  const circ=2*Math.PI*r;
+  const ns='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('width',size);svg.setAttribute('height',size);
+  // gradient
+  const defs=document.createElementNS(ns,'defs');
+  const grad=document.createElementNS(ns,'linearGradient');
+  grad.setAttribute('id','ag_'+id);
+  grad.setAttribute('x1','0%');grad.setAttribute('y1','0%');
+  grad.setAttribute('x2','100%');grad.setAttribute('y2','100%');
+  const s1=document.createElementNS(ns,'stop');s1.setAttribute('offset','0%');
+  const s2=document.createElementNS(ns,'stop');s2.setAttribute('offset','100%');
+  grad.appendChild(s1);grad.appendChild(s2);defs.appendChild(grad);svg.appendChild(defs);
+  // track
+  const track=document.createElementNS(ns,'circle');
+  track.setAttribute('cx',size/2);track.setAttribute('cy',size/2);track.setAttribute('r',r);
+  track.setAttribute('fill','none');track.setAttribute('stroke','rgba(255,255,255,.07)');
+  track.setAttribute('stroke-width',stroke);svg.appendChild(track);
+  // arc
+  const arc=document.createElementNS(ns,'circle');
+  arc.setAttribute('cx',size/2);arc.setAttribute('cy',size/2);arc.setAttribute('r',r);
+  arc.setAttribute('fill','none');arc.setAttribute('stroke','url(#ag_'+id+')');
+  arc.setAttribute('stroke-width',stroke);arc.setAttribute('stroke-linecap','round');
+  arc.setAttribute('stroke-dasharray',circ);arc.setAttribute('stroke-dashoffset',circ);
+  svg.appendChild(arc);
+  // dot
+  const dot=document.createElementNS(ns,'circle');
+  dot.setAttribute('r',stroke*1.6);dot.setAttribute('fill','#0a84ff');
+  dot.style.opacity='0';svg.appendChild(dot);
+
+  return {svg, arc, dot, s1, s2, circ, r, size};
+}
+
+function updateRing(ring, progress, mode, finished, isRunning){
+  const {arc,dot,s1,s2,circ,r,size} = ring;
+  const col = finished?'#ff453a':mode==='timer'?'#0a84ff':'#34c759';
+  const col2= finished?'#ff6961':mode==='timer'?'#5e5ce6':'#30d158';
+  const glow= finished?'rgba(255,69,58,.5)':mode==='timer'?'rgba(10,132,255,.5)':'rgba(52,199,89,.5)';
+  s1.setAttribute('stop-color',col);
+  s2.setAttribute('stop-color',col2);
+  dot.setAttribute('fill',col);
+  const p=Math.max(0,Math.min(1,progress));
+  arc.setAttribute('stroke-dashoffset', circ*(1-p));
+  arc.style.transition = isRunning?'stroke-dashoffset .25s linear':'stroke-dashoffset .5s ease';
+  ring.svg.style.filter = isRunning?`drop-shadow(0 0 10px ${glow})`:'none';
+  if(p>0.005 && p<0.998){
+    const angle=(2*Math.PI*p)-Math.PI/2;
+    dot.setAttribute('cx', size/2+r*Math.cos(angle));
+    dot.setAttribute('cy', size/2+r*Math.sin(angle));
+    dot.style.opacity='1';
+  } else {
+    dot.style.opacity='0';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TIMER
+// ══════════════════════════════════════════════════════════════════════════════
+function TimerView(){
+  let totalMs=0, remaining=0, running=false, finished=false, editing=true;
+  let rafId=null, endTime=null;
+
+  const PRESETS=[
+    {l:'1 min',ms:60000},{l:'3 min',ms:180000},{l:'5 min',ms:300000},
+    {l:'10 min',ms:600000},{l:'15 min',ms:900000},{l:'25 min',ms:1500000}
+  ];
+
+  // Build DOM
+  const root=document.createElement('div');
+  root.style.cssText='display:flex;flex-direction:column;align-items:center;gap:28px;width:100%';
+
+  // Ring
+  const ringWrap=document.createElement('div');ringWrap.className='ring-wrap';
+  const ring=buildRing('t');
+  ringWrap.appendChild(ring.svg);
+
+  const glowOrb=document.createElement('div');glowOrb.className='glow-orb';
+  glowOrb.style.cssText='opacity:0;pointer-events:none;background:radial-gradient(circle,rgba(10,132,255,.10) 0%,transparent 70%)';
+  ringWrap.appendChild(glowOrb);
+
+  const center=document.createElement('div');center.className='ring-center';
+
+  // Edit row
+  const editRow=document.createElement('div');editRow.className='edit-row';
+  function inp(id,max,val){
+    const i=document.createElement('input');
+    i.type='number';i.className='digit-input';i.id='t_'+id;
+    i.min=0;i.max=max;i.value=val;
+    i.addEventListener('focus',()=>i.select());
+    return i;
+  }
+  function esep(){const s=document.createElement('span');s.className='edit-sep';s.textContent=':';return s;}
+  const iH=inp('h',99,'00'),iM=inp('m',59,'05'),iS=inp('s',59,'00');
+  editRow.appendChild(iH);editRow.appendChild(esep());
+  editRow.appendChild(iM);editRow.appendChild(esep());
+  editRow.appendChild(iS);
+
+  // Display row
+  const dispRow=document.createElement('div');dispRow.className='digits';
+  const dH=document.createElement('span');dH.className='digit sm';
+  const dHS=document.createElement('span');dHS.className='sep sm';dHS.textContent=':';
+  const dM=document.createElement('span');dM.className='digit';
+  const dMS=document.createElement('span');dMS.className='sep';dMS.textContent=':';
+  const dS=document.createElement('span');dS.className='digit';
+  dispRow.appendChild(dH);dispRow.appendChild(dHS);
+  dispRow.appendChild(dM);dispRow.appendChild(dMS);dispRow.appendChild(dS);
+
+  const lblDone=document.createElement('span');lblDone.className='label-done';lblDone.textContent="Time's Up";lblDone.style.display='none';
+
+  center.appendChild(editRow);center.appendChild(dispRow);center.appendChild(lblDone);
+  ringWrap.appendChild(center);
+  root.appendChild(ringWrap);
+
+  // Presets
+  const presetsEl=document.createElement('div');presetsEl.className='presets';
+  PRESETS.forEach(p=>{
+    const b=document.createElement('button');
+    b.className='glass-btn preset-btn';b.textContent=p.l;
+    b.addEventListener('click',()=>applyPreset(p.ms));
+    presetsEl.appendChild(b);
+  });
+  root.appendChild(presetsEl);
+
+  // Controls
+  const controls=document.createElement('div');controls.className='controls';
+
+  function makeCtrl(icon,label,color){
+    const b=document.createElement('button');b.className='glass-btn ctrl-btn';
+    if(color){b.style.cssText=`border-color:${color}44;background:${color}22`;}
+    const ci=document.createElement('span');ci.className='ci';ci.textContent=icon;
+    b.appendChild(ci);
+    if(label){const cl=document.createElement('span');cl.className='cl';cl.textContent=label;
+      if(color)cl.style.color=color;b.appendChild(cl);}
+    return b;
+  }
+  function makeBig(icon,color){
+    const b=document.createElement('button');b.className='glass-btn big-btn';
+    b.textContent=icon;
+    if(color){
+      b.style.cssText=`background:${color}28;border-color:${color}55;box-shadow:0 0 28px ${color}33,0 4px 14px rgba(0,0,0,.5)`;
+    }
+    return b;
+  }
+
+  const btnReset=makeCtrl('↩','Reset',null);
+  const btnPlay=makeBig('▶','#0a84ff');
+  const btnPause=makeBig('⏸',null);
+  const btnStop=makeCtrl('⏹','Stop','#ff453a');
+
+  controls.appendChild(btnReset);
+  controls.appendChild(btnPlay);
+  root.appendChild(controls);
+
+  // ── Logic ──
+  function msFromInput(){
+    const h=Math.max(0,parseInt(iH.value)||0);
+    const m=Math.max(0,parseInt(iM.value)||0);
+    const s=Math.max(0,parseInt(iS.value)||0);
+    return (h*3600+m*60+s)*1000;
+  }
+  function applyPreset(ms){
+    stop();
+    totalMs=ms;remaining=ms;editing=false;finished=false;
+    const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000),s=Math.floor((ms%60000)/1000);
+    iH.value=pad(h);iM.value=pad(m);iS.value=pad(s);
+    render();
+  }
+  function tick(){
+    remaining=Math.max(0,endTime-Date.now());
+    if(remaining<=0){running=false;finished=true;render();return;}
+    render();rafId=requestAnimationFrame(tick);
+  }
+  function startTimer(){
+    const ms=editing?msFromInput():remaining;
+    if(!ms)return;
+    totalMs=ms;remaining=ms;endTime=Date.now()+ms;
+    running=true;finished=false;editing=false;
+    rafId=requestAnimationFrame(tick);render();
+  }
+  function pause(){cancelAnimationFrame(rafId);running=false;render();}
+  function resume(){endTime=Date.now()+remaining;running=true;rafId=requestAnimationFrame(tick);render();}
+  function stop(){
+    cancelAnimationFrame(rafId);running=false;finished=false;editing=true;
+    remaining=totalMs||msFromInput();render();
+  }
+
+  btnReset.addEventListener('click',stop);
+  btnPlay.addEventListener('click',()=>editing?startTimer():(remaining<totalMs?resume():startTimer()));
+  btnPause.addEventListener('click',pause);
+  btnStop.addEventListener('click',stop);
+
+  function render(){
+    const cur=editing?msFromInput():remaining;
+    const {h,m,s,hasH}=formatTime(cur);
+    const progress=totalMs>0?remaining/totalMs:(editing?1:0);
+
+    // ring
+    updateRing(ring,progress,'timer',finished,running);
+    ring.svg.style.transition='filter .5s ease';
+
+    // glow
+    if(running&&!finished){
+      glowOrb.style.animation='glow-pulse 2s ease-in-out infinite';
+      glowOrb.style.opacity='1';
+    } else if(finished){
+      glowOrb.style.background='radial-gradient(circle,rgba(255,69,58,.14) 0%,transparent 70%)';
+      glowOrb.style.animation='pulse-ring 1s ease-in-out infinite';
+      glowOrb.style.opacity='1';
+    } else {
+      glowOrb.style.animation='none';glowOrb.style.opacity='0';
     }
 
-    // ── Background ──────────────────────────────────────────────────────────
-    function Background({ mode, active }) {
-      const c1 = mode === 'timer'
-        ? (active ? 'rgba(10,132,255,0.38)' : 'rgba(10,132,255,0.18)')
-        : (active ? 'rgba(52,199,89,0.32)'  : 'rgba(52,199,89,0.14)');
-      const c2 = mode === 'timer' ? 'rgba(94,92,230,0.22)' : 'rgba(48,209,88,0.18)';
-      return (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 0,
-          background: `
-            radial-gradient(ellipse 70% 55% at 30% 20%, ${c1}, transparent 60%),
-            radial-gradient(ellipse 60% 50% at 75% 80%, ${c2}, transparent 60%),
-            radial-gradient(ellipse 50% 60% at 80% 10%, rgba(255,55,95,0.10), transparent 55%),
-            #050508
-          `,
-          transition: 'background 1.2s ease',
-        }} />
-      );
+    // digits vs edit
+    if(editing){
+      editRow.style.display='flex';dispRow.style.display='none';
+    } else {
+      editRow.style.display='none';dispRow.style.display='flex';
+      if(hasH){dH.style.display='';dHS.style.display='';dH.textContent=h;dM.className='digit sm';dMS.className='sep sm';dS.className='digit sm';}
+      else{dH.style.display='none';dHS.style.display='none';dM.className='digit';dMS.className='sep';dS.className='digit';}
+      dM.textContent=m;dS.textContent=s;
+      const col=finished?'#ff453a':'#fff';
+      dM.style.color=col;dS.style.color=col;dH.style.color=col;
     }
+    lblDone.style.display=finished?'':'none';
 
-    // ── Progress Ring ───────────────────────────────────────────────────────
-    function ProgressRing({ progress, size = 280, isRunning, mode, finished }) {
-      const stroke = 3.5;
-      const r = (size - stroke * 2) / 2;
-      const circ = 2 * Math.PI * r;
-      const dash = circ * Math.max(0, Math.min(1, 1 - progress));
-      const arcColor = finished ? '#ff453a' : mode === 'timer' ? '#0a84ff' : '#34c759';
-      const glow = finished ? 'rgba(255,69,58,0.5)' : mode === 'timer' ? 'rgba(10,132,255,0.5)' : 'rgba(52,199,89,0.5)';
-      const endColor = finished ? '#ff6961' : mode === 'timer' ? '#5e5ce6' : '#30d158';
+    // presets
+    presetsEl.style.display=(editing||(!running&&!finished))?'flex':'none';
 
-      const angle = (2 * Math.PI * (1 - progress)) - Math.PI / 2;
-      const dotX = size / 2 + r * Math.cos(angle);
-      const dotY = size / 2 + r * Math.sin(angle);
-
-      return (
-        <svg width={size} height={size} style={{
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%,-50%) rotate(-90deg)',
-          filter: isRunning ? `drop-shadow(0 0 10px ${glow})` : 'none',
-          transition: 'filter 0.5s ease',
-        }}>
-          <defs>
-            <linearGradient id="ag" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={arcColor} />
-              <stop offset="100%" stopColor={endColor} stopOpacity="0.8" />
-            </linearGradient>
-          </defs>
-          <circle cx={size/2} cy={size/2} r={r} fill="none"
-            stroke="rgba(255,255,255,0.07)" strokeWidth={stroke} />
-          <circle cx={size/2} cy={size/2} r={r} fill="none"
-            stroke="url(#ag)" strokeWidth={stroke}
-            strokeLinecap="round"
-            strokeDasharray={circ}
-            strokeDashoffset={dash}
-            style={{ transition: isRunning ? 'stroke-dashoffset 0.25s linear' : 'stroke-dashoffset 0.5s ease' }}
-          />
-          {progress > 0.005 && progress < 0.998 && (
-            <circle cx={dotX} cy={dotY} r={stroke * 1.6} fill={arcColor}
-              style={{ filter: `drop-shadow(0 0 5px ${glow})` }} />
-          )}
-        </svg>
-      );
+    // controls
+    controls.innerHTML='';
+    if(!running&&!finished){controls.appendChild(btnReset);}
+    if(finished){
+      const br2=makeCtrl('↩','Reset','#ff453a');br2.addEventListener('click',stop);
+      controls.appendChild(br2);
     }
+    if(!running){controls.appendChild(btnPlay);}
+    else{controls.appendChild(btnPause);}
+    if(running){controls.appendChild(btnStop);}
+  }
 
-    // ── Preset Chip ─────────────────────────────────────────────────────────
-    function PresetChip({ label, onClick }) {
-      return (
-        <button className="glass-btn" onClick={onClick} style={{
-          padding: '9px 18px', borderRadius: 22,
-          fontSize: 14, fontWeight: 500,
-          color: 'rgba(255,255,255,0.75)',
-          fontFamily: SF, flexShrink: 0,
-        }}>{label}</button>
-      );
+  render();
+  return root;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STOPWATCH
+// ══════════════════════════════════════════════════════════════════════════════
+function StopwatchView(){
+  let elapsed=0,running=false,laps=[];
+  let rafId=null,startTime=null,offset=0;
+
+  const root=document.createElement('div');
+  root.style.cssText='display:flex;flex-direction:column;align-items:center;gap:28px;width:100%';
+
+  // Ring
+  const ringWrap=document.createElement('div');ringWrap.className='ring-wrap';
+  const ring=buildRing('sw');
+  ringWrap.appendChild(ring.svg);
+  const glowOrb=document.createElement('div');glowOrb.className='glow-orb';
+  glowOrb.style.cssText='opacity:0;pointer-events:none;background:radial-gradient(circle,rgba(52,199,89,.09) 0%,transparent 70%)';
+  ringWrap.appendChild(glowOrb);
+
+  const center=document.createElement('div');center.className='ring-center';
+  const digWrap=document.createElement('div');digWrap.style.cssText='display:flex;flex-direction:column;align-items:center;gap:4px';
+  const dispRow=document.createElement('div');dispRow.className='digits';
+  const dH=document.createElement('span');dH.className='digit sm';
+  const dHS=document.createElement('span');dHS.className='sep sm';dHS.textContent=':';
+  const dM=document.createElement('span');dM.className='digit';
+  const dMS=document.createElement('span');dMS.className='sep';dMS.textContent=':';
+  const dS=document.createElement('span');dS.className='digit';
+  dispRow.appendChild(dH);dispRow.appendChild(dHS);
+  dispRow.appendChild(dM);dispRow.appendChild(dMS);dispRow.appendChild(dS);
+  const msEl=document.createElement('span');msEl.className='sub-ms';msEl.textContent='.00';
+  digWrap.appendChild(dispRow);digWrap.appendChild(msEl);
+  center.appendChild(digWrap);
+  ringWrap.appendChild(center);
+  root.appendChild(ringWrap);
+
+  // Controls
+  const controls=document.createElement('div');controls.className='controls';
+  root.appendChild(controls);
+
+  // Laps
+  const lapsEl=document.createElement('div');lapsEl.className='laps glass';lapsEl.style.display='none';
+  root.appendChild(lapsEl);
+
+  function tick(){
+    elapsed=offset+(Date.now()-startTime);
+    render();rafId=requestAnimationFrame(tick);
+  }
+  function start(){startTime=Date.now();running=true;rafId=requestAnimationFrame(tick);render();}
+  function pause(){cancelAnimationFrame(rafId);offset+=Date.now()-startTime;running=false;render();}
+  function reset(){cancelAnimationFrame(rafId);offset=0;elapsed=0;running=false;laps=[];render();}
+  function lap(){
+    const prev=laps[0]?laps[0].cum:0;
+    laps.unshift({time:elapsed-prev,cum:elapsed,id:laps.length});
+    renderLaps();
+  }
+
+  function renderLaps(){
+    lapsEl.style.display=laps.length?'block':'none';
+    lapsEl.innerHTML='';
+    const times=laps.map(l=>l.time);
+    const best=times.length>1?Math.min(...times):null;
+    const worst=times.length>1?Math.max(...times):null;
+    laps.forEach((lap,i)=>{
+      const {m,s,cs}=formatTime(lap.time,true);
+      const row=document.createElement('div');row.className='lap-row';
+      const num=document.createElement('span');num.className='lap-num';num.textContent='Lap '+(laps.length-i);
+      const time=document.createElement('span');time.className='lap-time';
+      time.textContent=`${m}:${s}.${cs}`;
+      time.style.color=lap.time===best?'#34c759':lap.time===worst?'#ff453a':'rgba(255,255,255,.85)';
+      row.appendChild(num);row.appendChild(time);lapsEl.appendChild(row);
+    });
+  }
+
+  function render(){
+    updateRing(ring,0,'stopwatch',false,running);
+    if(running){glowOrb.style.animation='glow-pulse 1.5s ease-in-out infinite';glowOrb.style.opacity='1';}
+    else{glowOrb.style.animation='none';glowOrb.style.opacity='0';}
+
+    const {h,m,s,cs,hasH}=formatTime(elapsed,true);
+    if(hasH){dH.style.display='';dHS.style.display='';dH.textContent=h;dM.className='digit sm';dMS.className='sep sm';dS.className='digit sm';}
+    else{dH.style.display='none';dHS.style.display='none';dM.className='digit';dMS.className='sep';dS.className='digit';}
+    dM.textContent=m;dS.textContent=s;msEl.textContent='.'+cs;
+
+    controls.innerHTML='';
+    if(running){
+      const bLap=document.createElement('button');bLap.className='glass-btn ctrl-btn';
+      const ci=document.createElement('span');ci.className='ci';ci.textContent='⊙';
+      const cl=document.createElement('span');cl.className='cl';cl.textContent='Lap';
+      bLap.appendChild(ci);bLap.appendChild(cl);bLap.addEventListener('click',lap);
+      controls.appendChild(bLap);
+      const bP=document.createElement('button');bP.className='glass-btn big-btn';bP.textContent='⏸';
+      bP.style.cssText='background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.22);box-shadow:0 4px 14px rgba(0,0,0,.5)';
+      bP.addEventListener('click',pause);controls.appendChild(bP);
+    } else {
+      const bR=document.createElement('button');bR.className='glass-btn ctrl-btn';
+      const ci=document.createElement('span');ci.className='ci';ci.textContent='↩';
+      const cl=document.createElement('span');cl.className='cl';cl.textContent='Reset';
+      bR.appendChild(ci);bR.appendChild(cl);
+      if(elapsed===0)bR.style.opacity='.3';
+      bR.addEventListener('click',reset);controls.appendChild(bR);
+      const bS=document.createElement('button');bS.className='glass-btn big-btn';bS.textContent='▶';
+      bS.style.cssText='background:rgba(52,199,89,.28);border-color:rgba(52,199,89,.55);box-shadow:0 0 28px rgba(52,199,89,.22),0 4px 14px rgba(0,0,0,.5)';
+      bS.addEventListener('click',start);controls.appendChild(bS);
     }
+  }
 
-    // ── Control Button ──────────────────────────────────────────────────────
-    function CtrlBtn({ icon, label, onTap, color, size = 68, disabled }) {
-      return (
-        <button className="glass-btn" onClick={onTap} disabled={disabled} style={{
-          width: size, height: size, borderRadius: size / 2,
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          justifyContent: 'center', gap: 3,
-          border: `1px solid ${color ? color+'44' : 'rgba(255,255,255,0.16)'}`,
-          background: color ? `${color}22` : 'rgba(255,255,255,0.10)',
-          opacity: disabled ? 0.3 : 1,
-          cursor: disabled ? 'default' : 'pointer',
-        }}>
-          <span style={{ fontSize: size > 60 ? 24 : 18, lineHeight: 1 }}>{icon}</span>
-          {label && <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.06em',
-            textTransform: 'uppercase', color: color || 'rgba(255,255,255,0.6)' }}>{label}</span>}
-        </button>
-      );
-    }
+  render();
+  return root;
+}
 
-    // ── Big Play/Pause Button ───────────────────────────────────────────────
-    function BigBtn({ icon, color, onTap }) {
-      return (
-        <button className="glass-btn" onClick={onTap} style={{
-          width: 86, height: 86, borderRadius: 43,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 30,
-          background: color ? `${color}28` : 'rgba(255,255,255,0.12)',
-          border: `1px solid ${color ? color+'55' : 'rgba(255,255,255,0.22)'}`,
-          boxShadow: color
-            ? `0 0 30px ${color}33, 0 4px 16px rgba(0,0,0,0.5)`
-            : '0 4px 16px rgba(0,0,0,0.5)',
-        }}>{icon}</button>
-      );
-    }
+// ══════════════════════════════════════════════════════════════════════════════
+// ROUTER
+// ══════════════════════════════════════════════════════════════════════════════
+let currentTab='timer';
+let currentView=null;
 
-    // ── TIMER ───────────────────────────────────────────────────────────────
-    function TimerTab() {
-      const [totalMs, setTotalMs]   = useState(0);
-      const [remaining, setRem]     = useState(0);
-      const [running, setRunning]   = useState(false);
-      const [finished, setFinished] = useState(false);
-      const [editing, setEditing]   = useState(true);
-      const [hI, setHI] = useState('00');
-      const [mI, setMI] = useState('05');
-      const [sI, setSI] = useState('00');
+function showTab(tab){
+  currentTab=tab;
+  setBg(tab,false);
+  $('header').querySelector('h1').textContent=tab==='timer'?'Timer':'Stopwatch';
 
-      const rafRef = useRef(null);
-      const endRef = useRef(null);
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.tab===tab);
+  });
 
-      const PRESETS = [
-        { label: '1 min',  ms: 60000   },
-        { label: '3 min',  ms: 180000  },
-        { label: '5 min',  ms: 300000  },
-        { label: '10 min', ms: 600000  },
-        { label: '15 min', ms: 900000  },
-        { label: '25 min', ms: 1500000 },
-      ];
+  const content=$('content');
+  content.innerHTML='';
+  content.style.animation='none';
+  void content.offsetWidth;
+  content.style.animation='fade-in .22s ease';
 
-      const msFromInput = useCallback(() => {
-        const h = Math.max(0, parseInt(hI) || 0);
-        const m = Math.max(0, parseInt(mI) || 0);
-        const s = Math.max(0, parseInt(sI) || 0);
-        return (h * 3600 + m * 60 + s) * 1000;
-      }, [hI, mI, sI]);
+  currentView=tab==='timer'?TimerView():StopwatchView();
+  content.appendChild(currentView);
+}
 
-      const doTick = useCallback(() => {
-        const left = Math.max(0, endRef.current - Date.now());
-        setRem(left);
-        if (left <= 0) { setRunning(false); setFinished(true); }
-        else rafRef.current = requestAnimationFrame(doTick);
-      }, []);
+document.querySelectorAll('.tab-btn').forEach(b=>{
+  b.addEventListener('click',()=>showTab(b.dataset.tab));
+});
 
-      const stop = useCallback(() => {
-        cancelAnimationFrame(rafRef.current);
-        setRunning(false); setFinished(false); setEditing(true);
-        const ms = msFromInput();
-        setRem(ms); setTotalMs(ms);
-      }, [msFromInput]);
+showTab('timer');
 
-      const start = useCallback((ms) => {
-        const dur = ms ?? msFromInput();
-        if (!dur) return;
-        endRef.current = Date.now() + dur;
-        setRunning(true); setFinished(false); setEditing(false);
-        setTotalMs(dur); setRem(dur);
-        rafRef.current = requestAnimationFrame(doTick);
-      }, [msFromInput, doTick]);
-
-      const pause = () => { cancelAnimationFrame(rafRef.current); setRunning(false); };
-      const resume = () => {
-        endRef.current = Date.now() + remaining;
-        setRunning(true);
-        rafRef.current = requestAnimationFrame(doTick);
-      };
-
-      const applyPreset = (ms) => {
-        cancelAnimationFrame(rafRef.current);
-        setRunning(false); setFinished(false); setEditing(false);
-        const h = Math.floor(ms / 3600000);
-        const m = Math.floor((ms % 3600000) / 60000);
-        const s = Math.floor((ms % 60000) / 1000);
-        setHI(pad(h)); setMI(pad(m)); setSI(pad(s));
-        setTotalMs(ms); setRem(ms);
-      };
-
-      useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
-
-      const curMs = editing ? msFromInput() : remaining;
-      const { h, m, s, hasH } = formatTime(curMs);
-      const progress = totalMs > 0 ? remaining / totalMs : (editing ? 1 : 0);
-      const sepSize = hasH ? 44 : 60;
-
-      return (
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap: 28 }}>
-          {/* Ring */}
-          <div style={{ position:'relative', width:280, height:280 }}>
-            <ProgressRing progress={editing ? 1 : progress} size={280}
-              isRunning={running} mode="timer" finished={finished} />
-
-            {running && !finished && (
-              <div style={{ position:'absolute', inset:-24, borderRadius:'50%',
-                background:'radial-gradient(circle,rgba(10,132,255,0.10) 0%,transparent 70%)',
-                animation:'glow-pulse 2s ease-in-out infinite', pointerEvents:'none' }} />
-            )}
-            {finished && (
-              <div style={{ position:'absolute', inset:-24, borderRadius:'50%',
-                background:'radial-gradient(circle,rgba(255,69,58,0.14) 0%,transparent 70%)',
-                animation:'pulse-ring 1s ease-in-out infinite', pointerEvents:'none' }} />
-            )}
-
-            {/* Center digits */}
-            <div style={{
-              position:'absolute', top:'50%', left:'50%',
-              transform:'translate(-50%,-50%)',
-              display:'flex', flexDirection:'column', alignItems:'center', gap: 6,
-            }}>
-              {editing ? (
-                <div style={{ display:'flex', alignItems:'center', gap: 4 }}>
-                  <input className="digit-input" type="number" value={hI} min="0" max="99"
-                    onChange={e => setHI(e.target.value.replace(/\D/g,'').slice(-2))}
-                    onFocus={e => e.target.select()} style={{ width:72 }} />
-                  <span style={{ fontSize:36, fontWeight:200, color:'rgba(255,255,255,0.25)' }}>:</span>
-                  <input className="digit-input" type="number" value={mI} min="0" max="59"
-                    onChange={e => setMI(e.target.value.replace(/\D/g,'').slice(-2))}
-                    onFocus={e => e.target.select()} style={{ width:72 }} />
-                  <span style={{ fontSize:36, fontWeight:200, color:'rgba(255,255,255,0.25)' }}>:</span>
-                  <input className="digit-input" type="number" value={sI} min="0" max="59"
-                    onChange={e => setSI(e.target.value.replace(/\D/g,'').slice(-2))}
-                    onFocus={e => e.target.select()} style={{ width:72 }} />
-                </div>
-              ) : (
-                <div style={{ display:'flex', alignItems:'center', gap: 4,
-                  animation: finished ? 'bounce-in 0.4s cubic-bezier(0.34,1.56,0.64,1)' : 'none' }}>
-                  {hasH && <>
-                    <span style={{ fontSize:58, fontWeight:200, letterSpacing:'-0.04em',
-                      fontVariantNumeric:'tabular-nums', color:'#fff', lineHeight:1 }}>{h}</span>
-                    <span style={{ fontSize:sepSize, fontWeight:200, color:'rgba(255,255,255,0.22)', marginBottom:2 }}>:</span>
-                  </>}
-                  <span style={{ fontSize: hasH ? 58 : 78, fontWeight:200, letterSpacing:'-0.04em',
-                    fontVariantNumeric:'tabular-nums', color: finished ? '#ff453a' : '#fff', lineHeight:1,
-                    transition:'color 0.3s ease' }}>{m}</span>
-                  <span style={{ fontSize:sepSize, fontWeight:200, color:'rgba(255,255,255,0.22)', marginBottom:2 }}>:</span>
-                  <span style={{ fontSize: hasH ? 58 : 78, fontWeight:200, letterSpacing:'-0.04em',
-                    fontVariantNumeric:'tabular-nums', color: finished ? '#ff453a' : '#fff', lineHeight:1,
-                    transition:'color 0.3s ease' }}>{s}</span>
-                </div>
-              )}
-              {finished && (
-                <span style={{ fontSize:12, fontWeight:600, letterSpacing:'0.1em',
-                  color:'#ff453a', textTransform:'uppercase', animation:'fade-in 0.3s ease' }}>
-                  Time's Up
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Presets */}
-          {(editing || (!running && !finished)) && (
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'center',
-              maxWidth:340, animation:'slide-up 0.3s ease' }}>
-              {PRESETS.map(p => <PresetChip key={p.ms} label={p.label} onClick={() => applyPreset(p.ms)} />)}
-            </div>
-          )}
-
-          {/* Controls */}
-          <div style={{ display:'flex', gap:20, alignItems:'center' }}>
-            {(finished || !running) && (
-              <CtrlBtn icon="↩" label="Reset" onTap={stop}
-                disabled={!totalMs && editing && !msFromInput()} color={finished ? '#ff453a' : undefined} />
-            )}
-
-            {!running
-              ? <BigBtn icon="▶" color="#0a84ff"
-                  onTap={() => editing ? start() : (remaining < totalMs ? resume() : start())} />
-              : <BigBtn icon="⏸" onTap={pause} />
-            }
-
-            {running && <CtrlBtn icon="⏹" label="Stop" onTap={stop} color="#ff453a" />}
-          </div>
-        </div>
-      );
-    }
-
-    // ── STOPWATCH ───────────────────────────────────────────────────────────
-    function StopwatchTab() {
-      const [elapsed, setElapsed] = useState(0);
-      const [running, setRunning] = useState(false);
-      const [laps, setLaps]       = useState([]);
-
-      const rafRef    = useRef(null);
-      const startRef  = useRef(null);
-      const offsetRef = useRef(0);
-
-      const doTick = useCallback(() => {
-        setElapsed(offsetRef.current + (Date.now() - startRef.current));
-        rafRef.current = requestAnimationFrame(doTick);
-      }, []);
-
-      const start = () => {
-        startRef.current = Date.now();
-        setRunning(true);
-        rafRef.current = requestAnimationFrame(doTick);
-      };
-      const pause = () => {
-        cancelAnimationFrame(rafRef.current);
-        offsetRef.current += Date.now() - startRef.current;
-        setRunning(false);
-      };
-      const reset = () => {
-        cancelAnimationFrame(rafRef.current);
-        offsetRef.current = 0;
-        setElapsed(0); setRunning(false); setLaps([]);
-      };
-      const lap = () => {
-        const prev = laps[0]?.cumulative ?? 0;
-        setLaps(l => [{ time: elapsed - prev, cumulative: elapsed, id: l.length }, ...l]);
-      };
-
-      useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
-
-      const { h, m, s, cs, hasH } = formatTime(elapsed, true);
-      const lapTimes = laps.map(l => l.time);
-      const best  = lapTimes.length > 1 ? Math.min(...lapTimes) : null;
-      const worst = lapTimes.length > 1 ? Math.max(...lapTimes) : null;
-
-      return (
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:28 }}>
-          {/* Ring */}
-          <div style={{ position:'relative', width:280, height:280 }}>
-            <ProgressRing progress={0} size={280} isRunning={running} mode="stopwatch" />
-            {running && (
-              <div style={{ position:'absolute', inset:-24, borderRadius:'50%',
-                background:'radial-gradient(circle,rgba(52,199,89,0.09) 0%,transparent 70%)',
-                animation:'glow-pulse 1.5s ease-in-out infinite', pointerEvents:'none' }} />
-            )}
-            <div style={{ position:'absolute', top:'50%', left:'50%',
-              transform:'translate(-50%,-50%)',
-              display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                {hasH && <>
-                  <span style={{ fontSize:58, fontWeight:200, letterSpacing:'-0.04em',
-                    fontVariantNumeric:'tabular-nums', color:'#fff', lineHeight:1 }}>{h}</span>
-                  <span style={{ fontSize:44, fontWeight:200, color:'rgba(255,255,255,0.22)', marginBottom:2 }}>:</span>
-                </>}
-                <span style={{ fontSize: hasH ? 58 : 78, fontWeight:200, letterSpacing:'-0.04em',
-                  fontVariantNumeric:'tabular-nums', color:'#fff', lineHeight:1 }}>{m}</span>
-                <span style={{ fontSize: hasH ? 44 : 60, fontWeight:200, color:'rgba(255,255,255,0.22)', marginBottom:2 }}>:</span>
-                <span style={{ fontSize: hasH ? 58 : 78, fontWeight:200, letterSpacing:'-0.04em',
-                  fontVariantNumeric:'tabular-nums', color:'#fff', lineHeight:1 }}>{s}</span>
-              </div>
-              <span style={{ fontSize:26, fontWeight:300, letterSpacing:'0.02em',
-                color:'rgba(255,255,255,0.4)', fontVariantNumeric:'tabular-nums' }}>.{cs}</span>
-            </div>
-          </div>
-
-          {/* Controls */}
-          <div style={{ display:'flex', gap:20, alignItems:'center' }}>
-            {running ? (
-              <>
-                <CtrlBtn icon="⊙" label="Lap" onTap={lap} />
-                <BigBtn icon="⏸" onTap={pause} />
-              </>
-            ) : (
-              <>
-                <CtrlBtn icon="↩" label="Reset" onTap={reset} disabled={elapsed === 0} />
-                <BigBtn icon="▶" color="#34c759" onTap={start} />
-              </>
-            )}
-          </div>
-
-          {/* Laps */}
-          {laps.length > 0 && (
-            <div className="glass" style={{
-              width:'100%', maxWidth:340, borderRadius:22,
-              overflow:'hidden', maxHeight:200, overflowY:'auto',
-              animation:'slide-up 0.3s ease',
-            }}>
-              {laps.map((lap, i) => {
-                const { m:lm, s:ls, cs:lcs } = formatTime(lap.time, true);
-                const isBest  = lapTimes.length > 1 && lap.time === best;
-                const isWorst = lapTimes.length > 1 && lap.time === worst;
-                return (
-                  <div key={lap.id} style={{
-                    display:'flex', justifyContent:'space-between', alignItems:'center',
-                    padding:'13px 20px',
-                    borderBottom: i < laps.length-1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
-                  }}>
-                    <span style={{ fontSize:14, color:'rgba(255,255,255,0.45)', fontWeight:500 }}>
-                      Lap {laps.length - i}
-                    </span>
-                    <span style={{
-                      fontSize:15, fontWeight:500, fontVariantNumeric:'tabular-nums',
-                      color: isBest ? '#34c759' : isWorst ? '#ff453a' : 'rgba(255,255,255,0.85)',
-                    }}>{lm}:{ls}.{lcs}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    // ── ROOT ────────────────────────────────────────────────────────────────
-    function App() {
-      const [tab, setTab] = useState('timer');
-
-      return (
-        <div style={{ minHeight:'100dvh', display:'flex', flexDirection:'column',
-          alignItems:'center', justifyContent:'flex-start' }}>
-          <Background mode={tab} active={false} />
-
-          <div style={{
-            position:'relative', zIndex:1,
-            width:'100%', maxWidth:430,
-            display:'flex', flexDirection:'column', minHeight:'100dvh',
-            animation:'mount 0.5s ease both',
-          }}>
-            {/* Header */}
-            <div style={{
-              padding:'52px 24px 12px',
-              paddingTop:'max(52px, calc(env(safe-area-inset-top, 0px) + 24px))',
-            }}>
-              <h1 style={{ fontSize:34, fontWeight:700, letterSpacing:'-0.02em', color:'#fff' }}>
-                {tab === 'timer' ? 'Timer' : 'Stopwatch'}
-              </h1>
-            </div>
-
-            {/* Content */}
-            <div style={{ flex:1, padding:'8px 24px 24px', overflowY:'auto' }}>
-              <div key={tab} style={{ animation:'fade-in 0.22s ease' }}>
-                {tab === 'timer' ? <TimerTab /> : <StopwatchTab />}
-              </div>
-            </div>
-
-            {/* Tab Bar */}
-            <div style={{
-              padding:'0 20px',
-              paddingBottom:'max(28px, calc(env(safe-area-inset-bottom, 0px) + 12px))',
-            }}>
-              <div className="glass" style={{ borderRadius:28, padding:'7px', display:'flex', gap:4 }}>
-                {[
-                  { id:'timer',     icon:'⏱', label:'Timer'     },
-                  { id:'stopwatch', icon:'🕐', label:'Stopwatch' },
-                ].map(t => (
-                  <button key={t.id} className="tab-btn" onClick={() => setTab(t.id)} style={{
-                    flex:1, padding:'10px 0', borderRadius:21,
-                    background: tab === t.id ? 'rgba(255,255,255,0.14)' : 'transparent',
-                    boxShadow: tab === t.id
-                      ? '0 1px 0 rgba(255,255,255,0.1) inset, 0 2px 8px rgba(0,0,0,0.3)'
-                      : 'none',
-                    display:'flex', flexDirection:'column', alignItems:'center', gap:3,
-                  }}>
-                    <span style={{ fontSize:20 }}>{t.icon}</span>
-                    <span style={{
-                      fontSize:11, fontWeight: tab === t.id ? 600 : 400,
-                      color: tab === t.id ? '#fff' : 'rgba(255,255,255,0.4)',
-                      letterSpacing:'0.03em',
-                      transition:'color 0.2s ease',
-                    }}>{t.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-  </script>
+})();
+</script>
 </body>
 </html>

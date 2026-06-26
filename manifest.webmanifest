@@ -1,0 +1,15 @@
+{
+  "name": "Focus Empire",
+  "short_name": "Focus Empire",
+  "description": "Study with a timer, earn coins for staying focused, and build your civilization from the Stone Age to the future.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#050510",
+  "theme_color": "#050510",
+  "categories": ["education", "productivity", "games"],
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

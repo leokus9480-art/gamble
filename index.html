@@ -2,609 +2,871 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<title>Timer</title>
+<meta name="apple-mobile-web-app-title" content="Focus Empire"/>
+<meta name="theme-color" content="#050510"/>
+<link rel="manifest" href="manifest.webmanifest"/>
+<link rel="apple-touch-icon" href="icon.svg"/>
+<title>Focus Empire</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{width:100%;height:100%;overflow:hidden;background:#050508}
+html,body{width:100%;min-height:100%;background:#050510}
 body{
-  font-family:'SF Pro Rounded','SF Pro Display',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;
+  font-family:'SF Pro Rounded','SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',sans-serif;
   -webkit-font-smoothing:antialiased;
-  user-select:none;-webkit-user-select:none;
   -webkit-tap-highlight-color:transparent;
-  color:#fff;
+  color:#fff;overflow-x:hidden;
 }
-#bg{
-  position:fixed;inset:0;z-index:0;
-  transition:background 1.2s ease;
-}
+.noselect{user-select:none;-webkit-user-select:none}
+#bg{position:fixed;inset:0;z-index:0;transition:background 1.4s ease}
 #app{
   position:relative;z-index:1;
-  width:100%;max-width:430px;
-  min-height:100dvh;
-  margin:0 auto;
-  display:flex;flex-direction:column;
+  width:100%;max-width:520px;margin:0 auto;
+  min-height:100dvh;display:flex;flex-direction:column;
 }
-@keyframes fade-in{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
-@keyframes slide-up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-@keyframes glow-pulse{0%,100%{opacity:.45}50%{opacity:.9}}
-@keyframes pulse-ring{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.05);opacity:.35}}
-@keyframes bounce-in{0%{transform:scale(.85);opacity:0}60%{transform:scale(1.04)}80%{transform:scale(.98)}100%{transform:scale(1);opacity:1}}
 
-/* Glass */
+/* animations */
+@keyframes fade-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(.7);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+@keyframes glow-pulse{0%,100%{opacity:.4}50%{opacity:.9}}
+@keyframes float-up{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-60px);opacity:0}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+@keyframes sway{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-4px) rotate(1deg)}}
+@keyframes drift{from{transform:translateX(-60px)}to{transform:translateX(560px)}}
+@keyframes twinkle{0%,100%{opacity:.2}50%{opacity:1}}
+
+/* glass */
 .glass{
-  background:rgba(255,255,255,.072);
-  backdrop-filter:blur(40px) saturate(180%);
-  -webkit-backdrop-filter:blur(40px) saturate(180%);
-  border:1px solid rgba(255,255,255,.13);
-  box-shadow:
-    inset 0 1.5px 0 rgba(255,255,255,.10),
-    inset 0 -1px 0 rgba(255,255,255,.04),
-    0 24px 48px rgba(0,0,0,.55),
-    0 8px 20px rgba(0,0,0,.35);
+  background:rgba(255,255,255,.065);
+  backdrop-filter:blur(34px) saturate(180%);
+  -webkit-backdrop-filter:blur(34px) saturate(180%);
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.10),0 18px 40px rgba(0,0,0,.5);
 }
-.glass-btn{
+.btn{
   background:rgba(255,255,255,.10);
-  backdrop-filter:blur(30px) saturate(180%);
-  -webkit-backdrop-filter:blur(30px) saturate(180%);
   border:1px solid rgba(255,255,255,.16);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.12),
-    inset 0 -1px 0 rgba(0,0,0,.25),
-    0 4px 14px rgba(0,0,0,.4);
-  cursor:pointer;
-  transition:transform .12s cubic-bezier(.34,1.56,.64,1),background .12s ease;
-  -webkit-tap-highlight-color:transparent;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 4px 14px rgba(0,0,0,.35);
+  cursor:pointer;color:#fff;font-family:inherit;
+  transition:transform .12s cubic-bezier(.34,1.56,.64,1),background .15s ease,opacity .15s;
 }
-.glass-btn:active{transform:scale(.92)!important;background:rgba(255,255,255,.06)}
+.btn:active{transform:scale(.93)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn:disabled:active{transform:none}
 
-/* Header */
-#header{padding:max(52px,calc(env(safe-area-inset-top,0px) + 20px)) 24px 10px}
-#header h1{font-size:34px;font-weight:700;letter-spacing:-.02em}
-
-/* Content */
-#content{flex:1;padding:8px 24px 20px;overflow-y:auto;display:flex;flex-direction:column;align-items:center;gap:28px}
-
-/* Tab bar */
-#tabbar{padding:0 20px max(28px,calc(env(safe-area-inset-bottom,0px)+10px))}
-#tabbar .glass{border-radius:28px;padding:7px;display:flex;gap:4px}
-.tab-btn{
-  flex:1;padding:10px 0;border-radius:21px;border:none;
-  background:transparent;color:rgba(255,255,255,.4);
-  font-family:inherit;cursor:pointer;
-  display:flex;flex-direction:column;align-items:center;gap:3px;
-  transition:background .2s ease,box-shadow .2s ease;
-  -webkit-tap-highlight-color:transparent;
+/* header */
+#header{padding:max(40px,calc(env(safe-area-inset-top,0px)+18px)) 22px 6px;display:flex;align-items:center;justify-content:space-between}
+#header h1{font-size:26px;font-weight:700;letter-spacing:-.02em}
+#coinChip{
+  display:flex;align-items:center;gap:7px;
+  padding:8px 15px;border-radius:22px;font-weight:700;font-size:16px;
+  background:linear-gradient(135deg,rgba(255,196,0,.22),rgba(255,140,0,.14));
+  border:1px solid rgba(255,196,0,.3);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 4px 14px rgba(0,0,0,.3);
 }
-.tab-btn.active{
-  background:rgba(255,255,255,.14);color:#fff;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 2px 8px rgba(0,0,0,.3);
-}
-.tab-btn span.icon{font-size:20px}
-.tab-btn span.lbl{font-size:11px;font-weight:400;letter-spacing:.03em}
-.tab-btn.active span.lbl{font-weight:600}
+#coinChip .c{font-variant-numeric:tabular-nums}
 
-/* Ring container */
-.ring-wrap{position:relative;width:280px;height:280px;flex-shrink:0}
+/* content */
+#content{flex:1;padding:10px 18px 16px;display:flex;flex-direction:column;align-items:center;gap:22px;animation:fade-in .25s ease}
+
+/* tabbar */
+#tabbar{padding:0 16px max(22px,calc(env(safe-area-inset-bottom,0px)+8px));position:sticky;bottom:0}
+#tabbar .glass{border-radius:26px;padding:6px;display:flex;gap:4px}
+.tab-btn{flex:1;padding:9px 0;border-radius:20px;border:none;background:transparent;color:rgba(255,255,255,.42);font-family:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:background .2s,color .2s}
+.tab-btn.active{background:rgba(255,255,255,.13);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 2px 8px rgba(0,0,0,.3)}
+.tab-btn .icon{font-size:19px}
+.tab-btn .lbl{font-size:10px;font-weight:600;letter-spacing:.02em}
+
+/* ---- STUDY ---- */
+.ring-wrap{position:relative;width:270px;height:270px;flex-shrink:0}
 .ring-wrap svg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg)}
-.ring-center{
-  position:absolute;top:50%;left:50%;
-  transform:translate(-50%,-50%);
-  display:flex;flex-direction:column;align-items:center;gap:5px;
-}
-.glow-orb{
-  position:absolute;inset:-24px;border-radius:50%;pointer-events:none;
-}
+.ring-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;width:200px}
+.big-time{font-size:62px;font-weight:200;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+.sub-state{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+.earn-live{font-size:15px;font-weight:600;color:#ffce3a;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:5px;min-height:20px}
+.presets{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:360px}
+.preset-btn{padding:9px 16px;border-radius:20px;font-size:14px;font-weight:600;color:rgba(255,255,255,.8)}
+.preset-btn.sel{background:rgba(10,132,255,.3);border-color:rgba(10,132,255,.6);color:#fff}
+.custom-row{display:flex;align-items:center;gap:6px;justify-content:center}
+.custom-row input{width:64px;padding:9px 0;background:rgba(255,255,255,.09);border:1.5px solid rgba(255,255,255,.15);border-radius:14px;color:#fff;font-family:inherit;font-size:24px;font-weight:300;text-align:center;outline:none;appearance:textfield;-moz-appearance:textfield}
+.custom-row input::-webkit-inner-spin-button{display:none}
+.custom-row input:focus{border-color:rgba(10,132,255,.7);background:rgba(255,255,255,.13)}
+.custom-row .u{font-size:13px;color:rgba(255,255,255,.5);font-weight:600}
+.controls{display:flex;gap:18px;align-items:center}
+.big-btn{width:84px;height:84px;border-radius:42px;display:flex;align-items:center;justify-content:center;font-size:28px}
+.ctrl-btn{width:62px;height:62px;border-radius:31px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.ctrl-btn .ci{font-size:20px}
+.ctrl-btn .cl{font-size:8px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.streak-chip{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:18px;font-size:13px;font-weight:600;background:rgba(255,69,58,.14);border:1px solid rgba(255,69,58,.28);color:#ff9d96}
 
-/* Digits */
-.digits{display:flex;align-items:center;gap:3px}
-.digit{font-size:78px;font-weight:200;letter-spacing:-.04em;font-variant-numeric:tabular-nums;line-height:1;transition:color .3s ease}
-.digit.sm{font-size:58px}
-.sep{font-size:60px;font-weight:200;color:rgba(255,255,255,.22);margin-bottom:2px}
-.sep.sm{font-size:44px}
-.sub-ms{font-size:26px;font-weight:300;letter-spacing:.02em;color:rgba(255,255,255,.4);font-variant-numeric:tabular-nums}
-.label-done{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#ff453a;animation:fade-in .3s ease}
+/* ---- EMPIRE ---- */
+.era-banner{width:100%;text-align:center;display:flex;flex-direction:column;gap:3px;animation:pop .4s ease}
+.era-banner .era-name{font-size:23px;font-weight:800;letter-spacing:-.01em}
+.era-banner .era-sub{font-size:12px;color:rgba(255,255,255,.55);font-weight:600}
+.scene{
+  position:relative;width:100%;height:230px;border-radius:24px;overflow:hidden;
+  border:1px solid rgba(255,255,255,.1);box-shadow:0 14px 36px rgba(0,0,0,.5);
+}
+.scene .sky{position:absolute;inset:0;transition:background 1.2s ease}
+.scene .celestial{position:absolute;font-size:34px;filter:drop-shadow(0 0 14px rgba(255,255,255,.4))}
+.scene .star{position:absolute;width:2px;height:2px;border-radius:50%;background:#fff;animation:twinkle 3s ease-in-out infinite}
+.scene .cloud{position:absolute;font-size:30px;opacity:.85;animation:drift linear infinite}
+.scene .ground{position:absolute;left:0;right:0;bottom:0;height:64px;transition:background 1.2s ease}
+.scene .city{position:absolute;left:0;right:0;bottom:42px;display:flex;flex-wrap:wrap-reverse;align-items:flex-end;justify-content:center;gap:1px 3px;padding:0 8px;max-height:170px;overflow:hidden}
+.scene .b{font-size:30px;line-height:1;animation:pop .4s ease;display:inline-block}
+.scene .b.sway{animation:sway 4s ease-in-out infinite}
+.empty-hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.6);font-size:13px;font-weight:600;text-align:center;padding:20px}
+.power-row{display:flex;gap:10px;width:100%}
+.stat-card{flex:1;border-radius:18px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.stat-card .sv{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
+.stat-card .sl{font-size:10px;color:rgba(255,255,255,.55);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.advance-btn{width:100%;padding:15px;border-radius:20px;font-size:16px;font-weight:800;letter-spacing:.01em;background:linear-gradient(135deg,rgba(94,92,230,.5),rgba(10,132,255,.4));border:1px solid rgba(120,120,255,.5);box-shadow:0 0 26px rgba(94,92,230,.3),inset 0 1px 0 rgba(255,255,255,.2);color:#fff;display:flex;flex-direction:column;align-items:center;gap:3px}
+.advance-btn .sm{font-size:11px;font-weight:600;opacity:.85}
+.shop{width:100%;display:flex;flex-direction:column;gap:10px}
+.shop-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.05em;text-transform:uppercase;align-self:flex-start;margin-top:4px}
+.shop-item{display:flex;align-items:center;gap:13px;padding:12px 14px;border-radius:18px}
+.shop-item .emo{font-size:30px;flex-shrink:0;width:40px;text-align:center}
+.shop-item .info{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.shop-item .nm{font-size:15px;font-weight:700;display:flex;align-items:center;gap:7px}
+.shop-item .owned{font-size:11px;font-weight:700;color:#7ee0a0;background:rgba(52,199,89,.16);padding:1px 7px;border-radius:10px}
+.shop-item .ds{font-size:11.5px;color:rgba(255,255,255,.5)}
+.buy-btn{flex-shrink:0;padding:11px 15px;border-radius:15px;font-size:14px;font-weight:800;display:flex;align-items:center;gap:5px;background:rgba(255,196,0,.18);border:1px solid rgba(255,196,0,.34);color:#ffd75e;min-width:92px;justify-content:center}
+.buy-btn.cant{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1);color:rgba(255,255,255,.4)}
 
-/* Edit inputs */
-.edit-row{display:flex;align-items:center;gap:5px}
-.digit-input{
-  width:74px;padding:10px 0;
-  background:rgba(255,255,255,.09);
-  border:1.5px solid rgba(255,255,255,.15);
-  border-radius:16px;
-  color:#fff;font-family:inherit;
-  font-size:36px;font-weight:300;text-align:center;
-  outline:none;
-  -moz-appearance:textfield;appearance:textfield;
-  transition:border-color .2s ease,background .2s ease,box-shadow .2s ease;
-}
-.digit-input:focus{
-  background:rgba(255,255,255,.14);
-  border-color:rgba(10,132,255,.8);
-  box-shadow:0 0 0 3px rgba(10,132,255,.22);
-}
-.digit-input::-webkit-inner-spin-button,.digit-input::-webkit-outer-spin-button{display:none}
-.edit-sep{font-size:34px;font-weight:200;color:rgba(255,255,255,.25)}
+/* ---- STATS ---- */
+.stats-grid{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat-big{border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:4px}
+.stat-big .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+.stat-big .l{font-size:11px;color:rgba(255,255,255,.55);font-weight:600}
+.timeline{width:100%;display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.tl-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:16px;font-size:14px;font-weight:600}
+.tl-item .te{font-size:24px}
+.tl-item.done{border:1px solid rgba(52,199,89,.3);background:rgba(52,199,89,.08)}
+.tl-item.cur{border:1px solid rgba(10,132,255,.4);background:rgba(10,132,255,.1)}
+.tl-item.lock{opacity:.4}
+.tl-item .tn{flex:1}
+.tl-item .ts{font-size:11px;font-weight:700;opacity:.8}
+.reset-btn{margin-top:6px;padding:11px;border-radius:14px;font-size:13px;font-weight:600;color:#ff8a82;background:rgba(255,69,58,.1);border:1px solid rgba(255,69,58,.25)}
 
-/* Presets */
-.presets{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:340px;animation:slide-up .3s ease}
-.preset-btn{
-  padding:9px 18px;border-radius:22px;
-  font-size:14px;font-weight:500;color:rgba(255,255,255,.75);
-  font-family:inherit;
-}
+/* ---- OVERLAYS ---- */
+.overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(5,5,16,.55);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);animation:fade-in .2s ease}
+.modal{width:100%;max-width:380px;border-radius:28px;padding:28px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;animation:pop .35s ease}
+.modal .em{font-size:60px;line-height:1}
+.modal h2{font-size:24px;font-weight:800}
+.modal p{font-size:14px;color:rgba(255,255,255,.7);line-height:1.45}
+.modal .reward{font-size:34px;font-weight:800;color:#ffce3a;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px}
+.modal .row{display:flex;gap:10px;width:100%}
+.modal-btn{flex:1;padding:14px;border-radius:16px;font-size:15px;font-weight:700}
+.modal-btn.primary{background:linear-gradient(135deg,rgba(10,132,255,.6),rgba(94,92,230,.5));border-color:rgba(120,140,255,.5)}
+.breakline{font-size:13px;color:rgba(255,255,255,.55)}
+.breakline b{color:#ff8a82}
 
-/* Controls */
-.controls{display:flex;gap:20px;align-items:center}
-.ctrl-btn{
-  width:68px;height:68px;border-radius:34px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-  font-family:inherit;
-}
-.ctrl-btn .ci{font-size:22px;line-height:1}
-.ctrl-btn .cl{font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
-.big-btn{
-  width:86px;height:86px;border-radius:43px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:30px;
-  font-family:inherit;
-}
+/* distraction warning overlay */
+#warn{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;flex-direction:column;gap:18px;padding:30px;background:rgba(40,0,0,.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);text-align:center}
+#warn .we{font-size:80px;animation:shake .5s ease infinite}
+#warn h2{font-size:30px;font-weight:900;color:#ff5a4f}
+#warn p{font-size:15px;color:rgba(255,255,255,.85);max-width:300px;line-height:1.5}
+#warn .pen{font-size:14px;font-weight:700;color:#ffb84d}
 
-/* Laps */
-.laps{
-  width:100%;max-width:340px;
-  border-radius:22px;overflow:hidden;
-  max-height:200px;overflow-y:auto;
-  animation:slide-up .3s ease;
-}
-.lap-row{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:13px 20px;
-  border-bottom:1px solid rgba(255,255,255,.06);
-}
-.lap-row:last-child{border-bottom:none}
-.lap-num{font-size:14px;color:rgba(255,255,255,.45);font-weight:500}
-.lap-time{font-size:15px;font-weight:500;font-variant-numeric:tabular-nums}
+/* floating coin */
+.float-coin{position:fixed;z-index:40;font-size:22px;font-weight:800;color:#ffce3a;pointer-events:none;animation:float-up 1s ease-out forwards;text-shadow:0 2px 8px rgba(0,0,0,.5)}
 
 ::-webkit-scrollbar{display:none}
 </style>
 </head>
-<body>
+<body class="noselect">
 <div id="bg"></div>
 <div id="app">
-  <div id="header"><h1>Timer</h1></div>
+  <div id="header">
+    <h1 id="title">Study</h1>
+    <div id="coinChip"><span>🪙</span><span class="c" id="coinVal">0</span></div>
+  </div>
   <div id="content"></div>
   <div id="tabbar">
     <div class="glass">
-      <button class="tab-btn active" data-tab="timer">
-        <span class="icon">⏱</span><span class="lbl">Timer</span>
-      </button>
-      <button class="tab-btn" data-tab="stopwatch">
-        <span class="icon">🕐</span><span class="lbl">Stopwatch</span>
-      </button>
+      <button class="tab-btn active" data-tab="study"><span class="icon">📚</span><span class="lbl">Study</span></button>
+      <button class="tab-btn" data-tab="empire"><span class="icon">🏛️</span><span class="lbl">Empire</span></button>
+      <button class="tab-btn" data-tab="stats"><span class="icon">📊</span><span class="lbl">Stats</span></button>
     </div>
   </div>
+</div>
+
+<div id="warn">
+  <div class="we">⚠️</div>
+  <h2>Back to studying!</h2>
+  <p>You left your study session. Get back before you lose your focus streak and coins.</p>
+  <div class="pen" id="warnPen"></div>
 </div>
 
 <script>
 (function(){
 'use strict';
+const $=id=>document.getElementById(id);
+const el=(t,c,txt)=>{const e=document.createElement(t);if(c)e.className=c;if(txt!=null)e.textContent=txt;return e;};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
-const $ = id => document.getElementById(id);
-const pad = n => String(Math.max(0,Math.floor(n))).padStart(2,'0');
-
-function formatTime(ms, showMs){
-  const t = Math.max(0, ms);
-  const h = Math.floor(t/3600000);
-  const m = Math.floor((t%3600000)/60000);
-  const s = Math.floor((t%60000)/1000);
-  const cs = Math.floor((t%1000)/10);
-  return {h:pad(h),m:pad(m),s:pad(s),cs:pad(cs),hasH:h>0};
+/* ───────── number formatting ───────── */
+function fmt(n){
+  n=Math.floor(n);
+  if(n<1000)return ''+n;
+  const u=['','K','M','B','T','Qa','Qi'];
+  let i=0,x=n;
+  while(x>=1000&&i<u.length-1){x/=1000;i++;}
+  return (x<10?x.toFixed(2):x<100?x.toFixed(1):Math.floor(x))+u[i];
+}
+function fmtTime(ms){
+  ms=Math.max(0,ms);
+  const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000),s=Math.floor((ms%60000)/1000);
+  const p=n=>String(n).padStart(2,'0');
+  return h>0?`${h}:${p(m)}:${p(s)}`:`${p(m)}:${p(s)}`;
+}
+function fmtDur(ms){
+  const tot=Math.floor(ms/60000);
+  const h=Math.floor(tot/60),m=tot%60;
+  return h>0?`${h}h ${m}m`:`${m}m`;
 }
 
-// ── Background ──────────────────────────────────────────────────────────────
-function setBg(mode, active){
-  const c1 = mode==='timer'
-    ? (active?'rgba(10,132,255,.38)':'rgba(10,132,255,.18)')
-    : (active?'rgba(52,199,89,.32)':'rgba(52,199,89,.14)');
-  const c2 = mode==='timer'?'rgba(94,92,230,.22)':'rgba(48,209,88,.18)';
-  $('bg').style.background = `
-    radial-gradient(ellipse 70% 55% at 30% 20%,${c1},transparent 60%),
-    radial-gradient(ellipse 60% 50% at 75% 80%,${c2},transparent 60%),
-    radial-gradient(ellipse 50% 60% at 80% 10%,rgba(255,55,95,.10),transparent 55%),
-    #050508`;
+/* ───────── ERAS ───────── */
+const ERAS=[
+ {name:'Stone Age',emoji:'🪨',mult:1,base:40,advance:1500,need:6,
+  sky:['#2a2a3a','#4a4452'],ground:'#5a4a38',night:false,
+  b:[{id:'fire',n:'Campfire',e:'🔥',f:1,d:'Warmth for the tribe'},
+     {id:'hut',n:'Mud Hut',e:'🛖',f:2.3,d:'Simple shelter'},
+     {id:'hunt',n:'Hunting Camp',e:'🏹',f:4.5,d:'Food & furs'},
+     {id:'menhir',n:'Standing Stone',e:'🗿',f:8,d:'Mark your land'}]},
+ {name:'Bronze Age',emoji:'🥉',mult:1.7,base:170,advance:7000,need:6,
+  sky:['#3a3346','#6a5a48'],ground:'#6b5638',night:false,
+  b:[{id:'tent',n:'Tent Village',e:'⛺',f:1,d:'Growing settlement'},
+     {id:'kiln',n:'Pottery Kiln',e:'🏺',f:2.3,d:'Store your goods'},
+     {id:'ox',n:'Ox Farm',e:'🐂',f:4.5,d:'Plough the fields'},
+     {id:'smith',n:'Bronze Smith',e:'⚒️',f:8,d:'Forge tools & blades'}]},
+ {name:'Iron Age',emoji:'⚔️',mult:2.8,base:600,advance:28000,need:6,
+  sky:['#33384a','#5a6a6a'],ground:'#4a5a3a',night:false,
+  b:[{id:'long',n:'Longhouse',e:'🏚️',f:1,d:'Home to many'},
+     {id:'forge',n:'Iron Forge',e:'🛡️',f:2.3,d:'Stronger weapons'},
+     {id:'wheat',n:'Wheat Farm',e:'🌾',f:4.5,d:'Feed the masses'},
+     {id:'mill',n:'Lumber Mill',e:'🪵',f:8,d:'Timber for building'}]},
+ {name:'Classical Age',emoji:'🏛️',mult:4.6,base:2200,advance:110000,need:6,
+  sky:['#3a4a6a','#7a8aa0'],ground:'#7a8a6a',night:false,
+  b:[{id:'temple',n:'Marble Temple',e:'🏛️',f:1,d:'Honour the gods'},
+     {id:'market',n:'Marketplace',e:'🏺',f:2.3,d:'Trade & prosper'},
+     {id:'aqua',n:'Aqueduct',e:'⛲',f:4.5,d:'Water for the city'},
+     {id:'theatre',n:'Amphitheater',e:'🎭',f:8,d:'Culture & games'}]},
+ {name:'Medieval Age',emoji:'🏰',mult:7.5,base:8500,advance:440000,need:6,
+  sky:['#33405a','#6a7088'],ground:'#5a6a4a',night:false,
+  b:[{id:'castle',n:'Stone Castle',e:'🏰',f:1,d:'Defend the realm'},
+     {id:'cath',n:'Cathedral',e:'⛪',f:2.3,d:'Faith & grandeur'},
+     {id:'vill',n:'Walled Village',e:'🏘️',f:4.5,d:'Thriving townsfolk'},
+     {id:'stable',n:'Knight Stables',e:'🐴',f:8,d:'Mounted cavalry'}]},
+ {name:'Renaissance',emoji:'🎨',mult:12,base:30000,advance:1700000,need:6,
+  sky:['#4a4a6a','#b0a0b0'],ground:'#7a7a5a',night:false,
+  b:[{id:'acad',n:'Academy',e:'📐',f:1,d:'Learning blooms'},
+     {id:'art',n:'Art Studio',e:'🎨',f:2.3,d:'Masterpieces'},
+     {id:'ship',n:'Trade Galleon',e:'⛵',f:4.5,d:'Explore the seas'},
+     {id:'clock',n:'Clock Tower',e:'🕰️',f:8,d:'Mark progress'}]},
+ {name:'Industrial Age',emoji:'🏭',mult:20,base:95000,advance:6500000,need:6,
+  sky:['#4a4448','#8a7a6a'],ground:'#4a4438',night:false,
+  b:[{id:'fact',n:'Factory',e:'🏭',f:1,d:'Mass production'},
+     {id:'rail',n:'Railway',e:'🚂',f:2.3,d:'Move goods fast'},
+     {id:'steel',n:'Steel Mill',e:'⚙️',f:4.5,d:'Build with iron'},
+     {id:'mine',n:'Coal Mine',e:'⛏️',f:8,d:'Power the engines'}]},
+ {name:'Modern Age',emoji:'💡',mult:34,base:300000,advance:26000000,need:6,
+  sky:['#2a3a5a','#5a8ac0'],ground:'#3a3a44',night:false,
+  b:[{id:'office',n:'Office Block',e:'🏢',f:1,d:'White-collar boom'},
+     {id:'mall',n:'Shopping Mall',e:'🏬',f:2.3,d:'Consumer culture'},
+     {id:'road',n:'Highway',e:'🛣️',f:4.5,d:'Connect the nation'},
+     {id:'power',n:'Power Plant',e:'⚡',f:8,d:'Electrify it all'}]},
+ {name:'Information Age',emoji:'🏙️',mult:55,base:950000,advance:110000000,need:6,
+  sky:['#1a2a4a','#3a6ab0'],ground:'#2a2a36',night:false,
+  b:[{id:'sky',n:'Skyscraper',e:'🏙️',f:1,d:'Touch the clouds'},
+     {id:'tech',n:'Tech Campus',e:'💻',f:2.3,d:'Innovation hub'},
+     {id:'data',n:'Data Center',e:'📡',f:4.5,d:'Run the cloud'},
+     {id:'air',n:'Int. Airport',e:'✈️',f:8,d:'Global reach'}]},
+ {name:'Future Age',emoji:'🚀',mult:90,base:3200000,advance:Infinity,need:8,
+  sky:['#0a0a2a','#2a1a4a'],ground:'#1a1a2a',night:true,
+  b:[{id:'arco',n:'Arcology',e:'🌆',f:1,d:'A city in a tower'},
+     {id:'port',n:'Space Port',e:'🛰️',f:2.3,d:'Reach for the stars'},
+     {id:'ai',n:'AI Nexus',e:'🤖',f:4.5,d:'Minds of silicon'},
+     {id:'sky2',n:'Sky City',e:'🛸',f:8,d:'Civilization ascendant'}]},
+];
+
+/* ───────── STATE ───────── */
+const SAVE_KEY='focusEmpire_v1';
+const DEF={
+  coins:0,totalEarned:0,era:0,owned:{},
+  totalFocusMs:0,sessions:0,distractions:0,streak:0,bestStreak:0,
+  lastDuration:25
+};
+let S=load();
+function load(){
+  try{const r=JSON.parse(localStorage.getItem(SAVE_KEY));if(r&&typeof r==='object')return Object.assign({},DEF,r);}catch(e){}
+  return Object.assign({},DEF);
+}
+let saveT=null;
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(SAVE_KEY,JSON.stringify(S));}catch(e){}},200);}
+
+function ownedCount(eraIdx,bid){return (S.owned[eraIdx]&&S.owned[eraIdx][bid])||0;}
+function buildingCost(era,b,owned){return Math.floor(era.base*b.f*Math.pow(1.18,owned));}
+function eraBuildingsTotal(eraIdx){const o=S.owned[eraIdx]||{};return Object.values(o).reduce((a,c)=>a+c,0);}
+function eraPower(){ // population/power across all eras
+  let p=0;
+  for(const k in S.owned){const o=S.owned[k];for(const id in o)p+=o[id];}
+  return p;
+}
+function productivity(){return ERAS[S.era].mult;}
+function streakMult(){return 1+Math.min(S.streak,10)*0.1;}
+
+/* ───────── COINS / earning ───────── */
+function addCoins(n){S.coins+=n;S.totalEarned+=n;save();updateCoinChip();}
+function spendCoins(n){if(S.coins<n)return false;S.coins-=n;save();updateCoinChip();return true;}
+function updateCoinChip(){$('coinVal').textContent=fmt(S.coins);}
+
+function floatCoin(text,x,y){
+  const f=el('div','float-coin',text);
+  f.style.left=(x-14)+'px';f.style.top=(y-10)+'px';
+  document.body.appendChild(f);
+  setTimeout(()=>f.remove(),1000);
 }
 
-// ── SVG Ring ────────────────────────────────────────────────────────────────
-function buildRing(id){
-  const size=280, stroke=3.5;
-  const r=(size-stroke*2)/2;
-  const circ=2*Math.PI*r;
+/* ───────── FOCUS detection (global) ───────── */
+let focused=true;
+const focusListeners=[];
+function onFocusChange(fn){focusListeners.push(fn);}
+function setFocused(v){
+  if(v===focused)return;
+  focused=v;
+  focusListeners.forEach(fn=>{try{fn(v);}catch(e){}});
+}
+function isAway(){return document.hidden||!document.hasFocus();}
+document.addEventListener('visibilitychange',()=>setFocused(!isAway()));
+window.addEventListener('blur',()=>setFocused(!isAway()));
+window.addEventListener('focus',()=>setFocused(!isAway()));
+
+/* ───────── BACKGROUND tint per tab/era ───────── */
+function setBg(tab){
+  if(tab==='empire'){
+    const e=ERAS[S.era];
+    $('bg').style.background=`radial-gradient(ellipse 80% 60% at 50% 0%,${e.sky[1]}55,transparent 60%),radial-gradient(ellipse 60% 50% at 50% 100%,${e.sky[0]}66,transparent 60%),#050510`;
+  }else if(tab==='study'){
+    $('bg').style.background=`radial-gradient(ellipse 70% 55% at 30% 15%,rgba(10,132,255,.22),transparent 60%),radial-gradient(ellipse 60% 50% at 75% 85%,rgba(94,92,230,.18),transparent 60%),#050510`;
+  }else{
+    $('bg').style.background=`radial-gradient(ellipse 70% 55% at 50% 10%,rgba(52,199,89,.16),transparent 60%),radial-gradient(ellipse 60% 50% at 50% 95%,rgba(48,209,88,.1),transparent 60%),#050510`;
+  }
+}
+
+/* ═══════════ STUDY VIEW ═══════════ */
+function StudyView(){
+  const root=el('div');root.style.cssText='display:flex;flex-direction:column;align-items:center;gap:22px;width:100%';
+
+  let mode='free'; // 'timer' | 'free'
+  let durationMin=S.lastDuration||25;
+  let running=false,finished=false;
+  let endTime=0,startWall=0;
+  let focusMs=0,sessionCoins=0,distractCount=0;
+  let awayStart=0;
+  let loopId=null,lastTick=0;
+  const GRACE=2000;
+
+  // ring
+  const ringWrap=el('div','ring-wrap');
   const ns='http://www.w3.org/2000/svg';
-  const svg=document.createElementNS(ns,'svg');
-  svg.setAttribute('width',size);svg.setAttribute('height',size);
-  // gradient
+  const size=270,stroke=4,r=(size-stroke*2)/2,circ=2*Math.PI*r;
+  const svg=document.createElementNS(ns,'svg');svg.setAttribute('width',size);svg.setAttribute('height',size);
   const defs=document.createElementNS(ns,'defs');
-  const grad=document.createElementNS(ns,'linearGradient');
-  grad.setAttribute('id','ag_'+id);
-  grad.setAttribute('x1','0%');grad.setAttribute('y1','0%');
-  grad.setAttribute('x2','100%');grad.setAttribute('y2','100%');
-  const s1=document.createElementNS(ns,'stop');s1.setAttribute('offset','0%');
-  const s2=document.createElementNS(ns,'stop');s2.setAttribute('offset','100%');
-  grad.appendChild(s1);grad.appendChild(s2);defs.appendChild(grad);svg.appendChild(defs);
-  // track
+  const grad=document.createElementNS(ns,'linearGradient');grad.setAttribute('id','sg');
+  grad.setAttribute('x1','0%');grad.setAttribute('y1','0%');grad.setAttribute('x2','100%');grad.setAttribute('y2','100%');
+  const st1=document.createElementNS(ns,'stop');st1.setAttribute('offset','0%');st1.setAttribute('stop-color','#0a84ff');
+  const st2=document.createElementNS(ns,'stop');st2.setAttribute('offset','100%');st2.setAttribute('stop-color','#5e5ce6');
+  grad.appendChild(st1);grad.appendChild(st2);defs.appendChild(grad);svg.appendChild(defs);
   const track=document.createElementNS(ns,'circle');
   track.setAttribute('cx',size/2);track.setAttribute('cy',size/2);track.setAttribute('r',r);
-  track.setAttribute('fill','none');track.setAttribute('stroke','rgba(255,255,255,.07)');
-  track.setAttribute('stroke-width',stroke);svg.appendChild(track);
-  // arc
+  track.setAttribute('fill','none');track.setAttribute('stroke','rgba(255,255,255,.07)');track.setAttribute('stroke-width',stroke);
+  svg.appendChild(track);
   const arc=document.createElementNS(ns,'circle');
   arc.setAttribute('cx',size/2);arc.setAttribute('cy',size/2);arc.setAttribute('r',r);
-  arc.setAttribute('fill','none');arc.setAttribute('stroke','url(#ag_'+id+')');
-  arc.setAttribute('stroke-width',stroke);arc.setAttribute('stroke-linecap','round');
-  arc.setAttribute('stroke-dasharray',circ);arc.setAttribute('stroke-dashoffset',circ);
+  arc.setAttribute('fill','none');arc.setAttribute('stroke','url(#sg)');arc.setAttribute('stroke-width',stroke);
+  arc.setAttribute('stroke-linecap','round');arc.setAttribute('stroke-dasharray',circ);arc.setAttribute('stroke-dashoffset',0);
   svg.appendChild(arc);
-  // dot
-  const dot=document.createElementNS(ns,'circle');
-  dot.setAttribute('r',stroke*1.6);dot.setAttribute('fill','#0a84ff');
-  dot.style.opacity='0';svg.appendChild(dot);
+  ringWrap.appendChild(svg);
 
-  return {svg, arc, dot, s1, s2, circ, r, size};
-}
-
-function updateRing(ring, progress, mode, finished, isRunning){
-  const {arc,dot,s1,s2,circ,r,size} = ring;
-  const col = finished?'#ff453a':mode==='timer'?'#0a84ff':'#34c759';
-  const col2= finished?'#ff6961':mode==='timer'?'#5e5ce6':'#30d158';
-  const glow= finished?'rgba(255,69,58,.5)':mode==='timer'?'rgba(10,132,255,.5)':'rgba(52,199,89,.5)';
-  s1.setAttribute('stop-color',col);
-  s2.setAttribute('stop-color',col2);
-  dot.setAttribute('fill',col);
-  const p=Math.max(0,Math.min(1,progress));
-  arc.setAttribute('stroke-dashoffset', circ*(1-p));
-  arc.style.transition = isRunning?'stroke-dashoffset .25s linear':'stroke-dashoffset .5s ease';
-  ring.svg.style.filter = isRunning?`drop-shadow(0 0 10px ${glow})`:'none';
-  if(p>0.005 && p<0.998){
-    const angle=(2*Math.PI*p)-Math.PI/2;
-    dot.setAttribute('cx', size/2+r*Math.cos(angle));
-    dot.setAttribute('cy', size/2+r*Math.sin(angle));
-    dot.style.opacity='1';
-  } else {
-    dot.style.opacity='0';
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// TIMER
-// ══════════════════════════════════════════════════════════════════════════════
-function TimerView(){
-  let totalMs=0, remaining=0, running=false, finished=false, editing=true;
-  let rafId=null, endTime=null;
-
-  const PRESETS=[
-    {l:'1 min',ms:60000},{l:'3 min',ms:180000},{l:'5 min',ms:300000},
-    {l:'10 min',ms:600000},{l:'15 min',ms:900000},{l:'25 min',ms:1500000}
-  ];
-
-  // Build DOM
-  const root=document.createElement('div');
-  root.style.cssText='display:flex;flex-direction:column;align-items:center;gap:28px;width:100%';
-
-  // Ring
-  const ringWrap=document.createElement('div');ringWrap.className='ring-wrap';
-  const ring=buildRing('t');
-  ringWrap.appendChild(ring.svg);
-
-  const glowOrb=document.createElement('div');glowOrb.className='glow-orb';
-  glowOrb.style.cssText='opacity:0;pointer-events:none;background:radial-gradient(circle,rgba(10,132,255,.10) 0%,transparent 70%)';
-  ringWrap.appendChild(glowOrb);
-
-  const center=document.createElement('div');center.className='ring-center';
-
-  // Edit row
-  const editRow=document.createElement('div');editRow.className='edit-row';
-  function inp(id,max,val){
-    const i=document.createElement('input');
-    i.type='number';i.className='digit-input';i.id='t_'+id;
-    i.min=0;i.max=max;i.value=val;
-    i.addEventListener('focus',()=>i.select());
-    return i;
-  }
-  function esep(){const s=document.createElement('span');s.className='edit-sep';s.textContent=':';return s;}
-  const iH=inp('h',99,'00'),iM=inp('m',59,'05'),iS=inp('s',59,'00');
-  editRow.appendChild(iH);editRow.appendChild(esep());
-  editRow.appendChild(iM);editRow.appendChild(esep());
-  editRow.appendChild(iS);
-
-  // Display row
-  const dispRow=document.createElement('div');dispRow.className='digits';
-  const dH=document.createElement('span');dH.className='digit sm';
-  const dHS=document.createElement('span');dHS.className='sep sm';dHS.textContent=':';
-  const dM=document.createElement('span');dM.className='digit';
-  const dMS=document.createElement('span');dMS.className='sep';dMS.textContent=':';
-  const dS=document.createElement('span');dS.className='digit';
-  dispRow.appendChild(dH);dispRow.appendChild(dHS);
-  dispRow.appendChild(dM);dispRow.appendChild(dMS);dispRow.appendChild(dS);
-
-  const lblDone=document.createElement('span');lblDone.className='label-done';lblDone.textContent="Time's Up";lblDone.style.display='none';
-
-  center.appendChild(editRow);center.appendChild(dispRow);center.appendChild(lblDone);
+  const center=el('div','ring-center');
+  const tEl=el('div','big-time','25:00');
+  const sub=el('div','sub-state','Ready');
+  const earn=el('div','earn-live','');
+  center.appendChild(tEl);center.appendChild(sub);center.appendChild(earn);
   ringWrap.appendChild(center);
   root.appendChild(ringWrap);
 
-  // Presets
-  const presetsEl=document.createElement('div');presetsEl.className='presets';
-  PRESETS.forEach(p=>{
-    const b=document.createElement('button');
-    b.className='glass-btn preset-btn';b.textContent=p.l;
-    b.addEventListener('click',()=>applyPreset(p.ms));
-    presetsEl.appendChild(b);
+  // setup area (presets etc.)
+  const setup=el('div');setup.style.cssText='display:flex;flex-direction:column;align-items:center;gap:14px;width:100%';
+
+  const modeRow=el('div','presets');
+  const freeBtn=el('button','btn preset-btn','♾️ Free Study');
+  const timerBtn=el('button','btn preset-btn','⏱️ Timed Goal');
+  modeRow.appendChild(freeBtn);modeRow.appendChild(timerBtn);
+  setup.appendChild(modeRow);
+
+  const presets=el('div','presets');
+  const PRESETS=[15,25,45,60,90];
+  const presetBtns=[];
+  PRESETS.forEach(m=>{
+    const b=el('button','btn preset-btn',m+' min');
+    b.addEventListener('click',()=>{durationMin=m;syncCustom();renderSetup();});
+    presetBtns.push({m,b});presets.appendChild(b);
   });
-  root.appendChild(presetsEl);
+  setup.appendChild(presets);
 
-  // Controls
-  const controls=document.createElement('div');controls.className='controls';
+  const customRow=el('div','custom-row');
+  const cInput=el('input');cInput.type='number';cInput.min=1;cInput.max=600;cInput.value=durationMin;
+  cInput.addEventListener('focus',()=>cInput.select());
+  cInput.addEventListener('input',()=>{durationMin=clamp(parseInt(cInput.value)||1,1,600);renderSetup();});
+  const cU=el('span','u','minutes');
+  customRow.appendChild(cInput);customRow.appendChild(cU);
+  setup.appendChild(customRow);
+  function syncCustom(){cInput.value=durationMin;}
 
-  function makeCtrl(icon,label,color){
-    const b=document.createElement('button');b.className='glass-btn ctrl-btn';
-    if(color){b.style.cssText=`border-color:${color}44;background:${color}22`;}
-    const ci=document.createElement('span');ci.className='ci';ci.textContent=icon;
-    b.appendChild(ci);
-    if(label){const cl=document.createElement('span');cl.className='cl';cl.textContent=label;
-      if(color)cl.style.color=color;b.appendChild(cl);}
-    return b;
-  }
-  function makeBig(icon,color){
-    const b=document.createElement('button');b.className='glass-btn big-btn';
-    b.textContent=icon;
-    if(color){
-      b.style.cssText=`background:${color}28;border-color:${color}55;box-shadow:0 0 28px ${color}33,0 4px 14px rgba(0,0,0,.5)`;
-    }
-    return b;
-  }
+  root.appendChild(setup);
 
-  const btnReset=makeCtrl('↩','Reset',null);
-  const btnPlay=makeBig('▶','#0a84ff');
-  const btnPause=makeBig('⏸',null);
-  const btnStop=makeCtrl('⏹','Stop','#ff453a');
-
-  controls.appendChild(btnReset);
-  controls.appendChild(btnPlay);
+  // controls
+  const controls=el('div','controls');
   root.appendChild(controls);
 
-  // ── Logic ──
-  function msFromInput(){
-    const h=Math.max(0,parseInt(iH.value)||0);
-    const m=Math.max(0,parseInt(iM.value)||0);
-    const s=Math.max(0,parseInt(iS.value)||0);
-    return (h*3600+m*60+s)*1000;
-  }
-  function applyPreset(ms){
-    stop();
-    totalMs=ms;remaining=ms;editing=false;finished=false;
-    const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000),s=Math.floor((ms%60000)/1000);
-    iH.value=pad(h);iM.value=pad(m);iS.value=pad(s);
-    render();
-  }
-  function tick(){
-    remaining=Math.max(0,endTime-Date.now());
-    if(remaining<=0){running=false;finished=true;render();return;}
-    render();rafId=requestAnimationFrame(tick);
-  }
-  function startTimer(){
-    const ms=editing?msFromInput():remaining;
-    if(!ms)return;
-    totalMs=ms;remaining=ms;endTime=Date.now()+ms;
-    running=true;finished=false;editing=false;
-    rafId=requestAnimationFrame(tick);render();
-  }
-  function pause(){cancelAnimationFrame(rafId);running=false;render();}
-  function resume(){endTime=Date.now()+remaining;running=true;rafId=requestAnimationFrame(tick);render();}
-  function stop(){
-    cancelAnimationFrame(rafId);running=false;finished=false;editing=true;
-    remaining=totalMs||msFromInput();render();
-  }
+  const tip=el('div');tip.style.cssText='font-size:12px;color:rgba(255,255,255,.45);text-align:center;max-width:300px;line-height:1.5';
+  tip.textContent='Earn coins for every focused second. Switch tabs or apps and you’ll lose coins — stay focused!';
+  root.appendChild(tip);
 
-  btnReset.addEventListener('click',stop);
-  btnPlay.addEventListener('click',()=>editing?startTimer():(remaining<totalMs?resume():startTimer()));
-  btnPause.addEventListener('click',pause);
-  btnStop.addEventListener('click',stop);
-
-  function render(){
-    const cur=editing?msFromInput():remaining;
-    const {h,m,s,hasH}=formatTime(cur);
-    const progress=totalMs>0?remaining/totalMs:(editing?1:0);
-
-    // ring
-    updateRing(ring,progress,'timer',finished,running);
-    ring.svg.style.transition='filter .5s ease';
-
-    // glow
-    if(running&&!finished){
-      glowOrb.style.animation='glow-pulse 2s ease-in-out infinite';
-      glowOrb.style.opacity='1';
-    } else if(finished){
-      glowOrb.style.background='radial-gradient(circle,rgba(255,69,58,.14) 0%,transparent 70%)';
-      glowOrb.style.animation='pulse-ring 1s ease-in-out infinite';
-      glowOrb.style.opacity='1';
-    } else {
-      glowOrb.style.animation='none';glowOrb.style.opacity='0';
+  function renderSetup(){
+    freeBtn.classList.toggle('sel',mode==='free');
+    timerBtn.classList.toggle('sel',mode==='timer');
+    presets.style.display=mode==='timer'?'flex':'none';
+    customRow.style.display=mode==='timer'?'flex':'none';
+    presetBtns.forEach(({m,b})=>b.classList.toggle('sel',m===durationMin&&document.activeElement!==cInput));
+    if(!running&&!finished){
+      tEl.textContent=mode==='timer'?fmtTime(durationMin*60000):'00:00';
+      sub.textContent=mode==='timer'?'Timed Goal':'Free Study';
+      arc.setAttribute('stroke-dashoffset',0);
     }
+  }
+  freeBtn.addEventListener('click',()=>{mode='free';renderSetup();});
+  timerBtn.addEventListener('click',()=>{mode='timer';renderSetup();});
 
-    // digits vs edit
-    if(editing){
-      editRow.style.display='flex';dispRow.style.display='none';
-    } else {
-      editRow.style.display='none';dispRow.style.display='flex';
-      if(hasH){dH.style.display='';dHS.style.display='';dH.textContent=h;dM.className='digit sm';dMS.className='sep sm';dS.className='digit sm';}
-      else{dH.style.display='none';dHS.style.display='none';dM.className='digit';dMS.className='sep';dS.className='digit';}
-      dM.textContent=m;dS.textContent=s;
-      const col=finished?'#ff453a':'#fff';
-      dM.style.color=col;dS.style.color=col;dH.style.color=col;
+  function earnRate(){return productivity()*streakMult();} // coins/sec while focused
+
+  function setRingColor(c1,c2){st1.setAttribute('stop-color',c1);st2.setAttribute('stop-color',c2);}
+
+  function startSession(){
+    running=true;finished=false;focusMs=0;sessionCoins=0;distractCount=0;
+    startWall=Date.now();lastTick=Date.now();
+    endTime=mode==='timer'?Date.now()+durationMin*60000:0;
+    setup.style.display='none';tip.style.display='none';
+    setFocusedFromReal();
+    loopId=setInterval(loop,200);
+    renderRunning();
+  }
+  function setFocusedFromReal(){focused=!isAway();}
+
+  function loop(){
+    const now=Date.now();
+    let dt=now-lastTick;lastTick=now;
+    if(!running){return;}
+    // only credit while focused and dt is sane (not a hidden gap)
+    if(focused&&dt<1500){
+      focusMs+=dt;
+      sessionCoins+=earnRate()*dt/1000;
     }
-    lblDone.style.display=finished?'':'none';
+    if(mode==='timer'){
+      const rem=endTime-now;
+      if(rem<=0){completeSession();return;}
+    }
+    renderRunning();
+  }
 
-    // presets
-    presetsEl.style.display=(editing||(!running&&!finished))?'flex':'none';
+  function renderRunning(){
+    const now=Date.now();
+    if(mode==='timer'){
+      const rem=Math.max(0,endTime-now);
+      tEl.textContent=fmtTime(rem);
+      const prog=clamp(rem/(durationMin*60000),0,1);
+      arc.setAttribute('stroke-dashoffset',circ*(1-prog));
+    }else{
+      tEl.textContent=fmtTime(now-startWall);
+      arc.setAttribute('stroke-dashoffset',0);
+    }
+    if(!focused){
+      sub.textContent='⚠️ Distracted';setRingColor('#ff453a','#ff6961');
+      svg.style.filter='drop-shadow(0 0 12px rgba(255,69,58,.5))';
+    }else{
+      sub.textContent='Focusing…';setRingColor('#0a84ff','#5e5ce6');
+      svg.style.filter='drop-shadow(0 0 10px rgba(10,132,255,.4))';
+    }
+    earn.innerHTML='🪙 '+fmt(sessionCoins)+(S.streak>0?` · 🔥${S.streak} (x${streakMult().toFixed(1)})`:'');
+  }
 
-    // controls
+  function renderControls(){
     controls.innerHTML='';
-    if(!running&&!finished){controls.appendChild(btnReset);}
-    if(finished){
-      const br2=makeCtrl('↩','Reset','#ff453a');br2.addEventListener('click',stop);
-      controls.appendChild(br2);
+    if(!running&&!finished){
+      const play=el('button','btn big-btn','▶');
+      play.style.cssText='background:rgba(10,132,255,.28);border-color:rgba(10,132,255,.55);box-shadow:0 0 28px rgba(10,132,255,.25),0 4px 14px rgba(0,0,0,.5)';
+      play.addEventListener('click',startSession);
+      controls.appendChild(play);
+    }else if(running){
+      const stop=el('button','btn ctrl-btn');stop.style.cssText='border-color:#ff453a44;background:#ff453a22';
+      stop.appendChild(el('span','ci','⏹'));stop.appendChild(el('span','cl','Finish'));
+      stop.querySelector('.cl').style.color='#ff453a';
+      stop.addEventListener('click',()=>endSession(true));
+      controls.appendChild(stop);
     }
-    if(!running){controls.appendChild(btnPlay);}
-    else{controls.appendChild(btnPause);}
-    if(running){controls.appendChild(btnStop);}
   }
 
-  render();
+  function endSession(early){
+    // free mode finish, or give-up on timer
+    if(mode==='free'||early)completeSession();
+  }
+
+  function completeSession(){
+    if(!running)return;
+    running=false;finished=true;
+    clearInterval(loopId);
+    svg.style.filter='none';
+    const gained=Math.floor(sessionCoins);
+    const focusedMin=focusMs/60000;
+    const clean=distractCount===0;
+    let bonus=0;
+    if(mode==='timer'&&clean&&focusMs>0){
+      S.streak++;if(S.streak>S.bestStreak)S.bestStreak=S.streak;
+      bonus=Math.floor(gained*0.3);
+    }else if(mode==='free'&&clean&&focusMin>=1){
+      S.streak++;if(S.streak>S.bestStreak)S.bestStreak=S.streak;
+      bonus=Math.floor(gained*0.15);
+    }else{
+      S.streak=0;
+    }
+    S.totalFocusMs+=focusMs;
+    if(focusMin>=1)S.sessions++;
+    S.lastDuration=durationMin;
+    const total=gained+bonus;
+    addCoins(total);save();
+    showResults({total,gained,bonus,focusMs,distractCount,clean,mode});
+    // reset view
+    running=false;finished=false;
+    setup.style.display='';tip.style.display='';
+    renderSetup();renderControls();
+  }
+
+  // distraction handling
+  function handleFocus(v){
+    if(!running)return;
+    if(!v){
+      awayStart=Date.now();
+      showWarn();
+    }else{
+      hideWarn();
+      const away=Date.now()-awayStart;
+      if(away>GRACE){
+        distractCount++;
+        S.distractions++;save();
+        const lost=Math.floor(sessionCoins*0.25);
+        sessionCoins=Math.max(0,sessionCoins-lost);
+        S.streak=0;
+      }
+    }
+    renderRunning();
+  }
+  onFocusChange(handleFocus);
+  // cleanup when view replaced
+  root._cleanup=()=>{clearInterval(loopId);const i=focusListeners.indexOf(handleFocus);if(i>=0)focusListeners.splice(i,1);hideWarn();};
+
+  renderSetup();renderControls();
+  syncCustom();
   return root;
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// STOPWATCH
-// ══════════════════════════════════════════════════════════════════════════════
-function StopwatchView(){
-  let elapsed=0,running=false,laps=[];
-  let rafId=null,startTime=null,offset=0;
+/* warning overlay (timer-driven penalty counter) */
+let warnTimer=null,warnStart=0;
+function showWarn(){
+  warnStart=Date.now();
+  $('warn').style.display='flex';
+  clearInterval(warnTimer);
+  warnTimer=setInterval(()=>{
+    const s=Math.floor((Date.now()-warnStart)/1000);
+    $('warnPen').textContent=s<2?'Get back within 2s to avoid a penalty…':`Away ${s}s — losing coins & streak!`;
+  },200);
+}
+function hideWarn(){clearInterval(warnTimer);$('warn').style.display='none';}
 
-  const root=document.createElement('div');
-  root.style.cssText='display:flex;flex-direction:column;align-items:center;gap:28px;width:100%';
+/* results modal */
+function showResults(r){
+  const ov=el('div','overlay');
+  const m=el('div','modal glass');
+  const clean=r.clean;
+  m.appendChild(el('div','em',r.total>0?(clean?'🎉':'📚'):'😴'));
+  m.appendChild(el('h2',null,r.total>0?(clean?'Focused Session!':'Session Complete'):'Nothing earned'));
+  const reward=el('div','reward');reward.innerHTML='🪙 +'+fmt(r.total);
+  m.appendChild(reward);
+  const p=el('p');
+  p.innerHTML=`Focused for <b style="color:#fff">${fmtDur(r.focusMs)}</b>`+
+    (r.bonus>0?`<br>Focus bonus: <b style="color:#7ee0a0">+${fmt(r.bonus)}</b>`:'')+
+    (r.distractCount>0?`<br><span class="breakline">Distracted <b>${r.distractCount}×</b> — streak lost</span>`:(r.total>0&&clean?'<br><span style="color:#7ee0a0">Perfect focus — streak kept! 🔥</span>':''));
+  m.appendChild(p);
+  const row=el('div','row');
+  const ok=el('button','btn modal-btn primary','Spend in Empire →');
+  ok.addEventListener('click',()=>{ov.remove();showTab('empire');});
+  const again=el('button','btn modal-btn','Study again');
+  again.addEventListener('click',()=>ov.remove());
+  row.appendChild(again);row.appendChild(ok);
+  m.appendChild(row);
+  ov.appendChild(m);document.body.appendChild(ov);
+}
 
-  // Ring
-  const ringWrap=document.createElement('div');ringWrap.className='ring-wrap';
-  const ring=buildRing('sw');
-  ringWrap.appendChild(ring.svg);
-  const glowOrb=document.createElement('div');glowOrb.className='glow-orb';
-  glowOrb.style.cssText='opacity:0;pointer-events:none;background:radial-gradient(circle,rgba(52,199,89,.09) 0%,transparent 70%)';
-  ringWrap.appendChild(glowOrb);
+/* ═══════════ EMPIRE VIEW ═══════════ */
+function EmpireView(){
+  const root=el('div');root.style.cssText='display:flex;flex-direction:column;align-items:center;gap:16px;width:100%';
+  const era=()=>ERAS[S.era];
 
-  const center=document.createElement('div');center.className='ring-center';
-  const digWrap=document.createElement('div');digWrap.style.cssText='display:flex;flex-direction:column;align-items:center;gap:4px';
-  const dispRow=document.createElement('div');dispRow.className='digits';
-  const dH=document.createElement('span');dH.className='digit sm';
-  const dHS=document.createElement('span');dHS.className='sep sm';dHS.textContent=':';
-  const dM=document.createElement('span');dM.className='digit';
-  const dMS=document.createElement('span');dMS.className='sep';dMS.textContent=':';
-  const dS=document.createElement('span');dS.className='digit';
-  dispRow.appendChild(dH);dispRow.appendChild(dHS);
-  dispRow.appendChild(dM);dispRow.appendChild(dMS);dispRow.appendChild(dS);
-  const msEl=document.createElement('span');msEl.className='sub-ms';msEl.textContent='.00';
-  digWrap.appendChild(dispRow);digWrap.appendChild(msEl);
-  center.appendChild(digWrap);
-  ringWrap.appendChild(center);
-  root.appendChild(ringWrap);
+  const banner=el('div','era-banner');
+  root.appendChild(banner);
 
-  // Controls
-  const controls=document.createElement('div');controls.className='controls';
-  root.appendChild(controls);
+  const scene=el('div','scene');
+  root.appendChild(scene);
 
-  // Laps
-  const lapsEl=document.createElement('div');lapsEl.className='laps glass';lapsEl.style.display='none';
-  root.appendChild(lapsEl);
+  const powerRow=el('div','power-row');
+  root.appendChild(powerRow);
 
-  function tick(){
-    elapsed=offset+(Date.now()-startTime);
-    render();rafId=requestAnimationFrame(tick);
+  const advanceWrap=el('div');advanceWrap.style.width='100%';
+  root.appendChild(advanceWrap);
+
+  const shopTitle=el('div','shop-title','Build your civilization');
+  root.appendChild(shopTitle);
+  const shop=el('div','shop');
+  root.appendChild(shop);
+
+  function renderScene(){
+    const e=era();
+    scene.innerHTML='';
+    const sky=el('div','sky');
+    sky.style.background=`linear-gradient(to bottom,${e.sky[0]},${e.sky[1]})`;
+    scene.appendChild(sky);
+    // stars at night
+    if(e.night){
+      for(let i=0;i<26;i++){
+        const s=el('div','star');
+        s.style.left=Math.random()*100+'%';s.style.top=Math.random()*55+'%';
+        s.style.animationDelay=(Math.random()*3)+'s';
+        scene.appendChild(s);
+      }
+    }
+    // celestial
+    const cel=el('div','celestial',e.night?'🌙':'☀️');
+    cel.style.top='16px';cel.style.right='22px';
+    scene.appendChild(cel);
+    // clouds
+    if(!e.night){
+      for(let i=0;i<2;i++){
+        const c=el('div','cloud','☁️');
+        c.style.top=(20+i*26)+'px';
+        c.style.animationDuration=(26+i*12)+'s';
+        c.style.animationDelay=(-i*10)+'s';
+        scene.appendChild(c);
+      }
+    }
+    const ground=el('div','ground');ground.style.background=`linear-gradient(to bottom,${e.ground},${e.ground}cc)`;
+    scene.appendChild(ground);
+
+    const city=el('div','city');
+    const o=S.owned[S.era]||{};
+    let any=false;
+    // render buildings, biggest f first so skyline looks good
+    const list=[...e.b].sort((a,b)=>b.f-a.f);
+    list.forEach(b=>{
+      const n=Math.min(o[b.id]||0,14);
+      for(let i=0;i<n;i++){
+        any=true;
+        const span=el('span','b'+(b.f>=4?' sway':''),b.e);
+        span.style.fontSize=(22+Math.min(b.f*2,18))+'px';
+        span.style.animationDelay=(Math.random()*4)+'s';
+        city.appendChild(span);
+      }
+    });
+    scene.appendChild(city);
+    if(!any){
+      const hint=el('div','empty-hint','Empty land… build something to begin your civilization!');
+      scene.appendChild(hint);
+    }
   }
-  function start(){startTime=Date.now();running=true;rafId=requestAnimationFrame(tick);render();}
-  function pause(){cancelAnimationFrame(rafId);offset+=Date.now()-startTime;running=false;render();}
-  function reset(){cancelAnimationFrame(rafId);offset=0;elapsed=0;running=false;laps=[];render();}
-  function lap(){
-    const prev=laps[0]?laps[0].cum:0;
-    laps.unshift({time:elapsed-prev,cum:elapsed,id:laps.length});
-    renderLaps();
+
+  function renderBanner(){
+    const e=era();
+    banner.innerHTML='';
+    banner.appendChild(el('div','era-name',e.emoji+' '+e.name));
+    banner.appendChild(el('div','era-sub',`Age ${S.era+1} of ${ERAS.length} · x${e.mult} productivity`));
   }
 
-  function renderLaps(){
-    lapsEl.style.display=laps.length?'block':'none';
-    lapsEl.innerHTML='';
-    const times=laps.map(l=>l.time);
-    const best=times.length>1?Math.min(...times):null;
-    const worst=times.length>1?Math.max(...times):null;
-    laps.forEach((lap,i)=>{
-      const {m,s,cs}=formatTime(lap.time,true);
-      const row=document.createElement('div');row.className='lap-row';
-      const num=document.createElement('span');num.className='lap-num';num.textContent='Lap '+(laps.length-i);
-      const time=document.createElement('span');time.className='lap-time';
-      time.textContent=`${m}:${s}.${cs}`;
-      time.style.color=lap.time===best?'#34c759':lap.time===worst?'#ff453a':'rgba(255,255,255,.85)';
-      row.appendChild(num);row.appendChild(time);lapsEl.appendChild(row);
+  function renderPower(){
+    const e=era();
+    powerRow.innerHTML='';
+    const mk=(v,l)=>{const c=el('div','stat-card glass');c.appendChild(el('div','sv',v));c.appendChild(el('div','sl',l));return c;};
+    powerRow.appendChild(mk('👥 '+fmt(eraPower()),'Population'));
+    powerRow.appendChild(mk('x'+streakMult().toFixed(1),'Focus Bonus'));
+    powerRow.appendChild(mk('🪙 '+fmt(S.coins),'Treasury'));
+  }
+
+  function renderAdvance(){
+    const e=era();
+    advanceWrap.innerHTML='';
+    if(S.era>=ERAS.length-1){
+      const done=el('div','advance-btn');done.style.background='linear-gradient(135deg,rgba(52,199,89,.4),rgba(48,209,88,.3))';done.style.borderColor='rgba(52,199,89,.5)';
+      done.appendChild(el('span',null,'🌟 Civilization Ascendant'));
+      done.appendChild(el('span','sm','You’ve reached the final age — keep studying & expanding!'));
+      advanceWrap.appendChild(done);
+      return;
+    }
+    const have=eraBuildingsTotal(S.era);
+    const canBuildings=have>=e.need;
+    const canCoins=S.coins>=e.advance;
+    const b=el('button','btn advance-btn');
+    if(canBuildings&&canCoins){
+      b.appendChild(el('span',null,`Advance to ${ERAS[S.era+1].emoji} ${ERAS[S.era+1].name}`));
+      b.appendChild(el('span','sm',`Cost: 🪙 ${fmt(e.advance)}`));
+      b.addEventListener('click',()=>advanceEra());
+    }else{
+      b.disabled=true;
+      b.appendChild(el('span',null,`Advance to ${ERAS[S.era+1].name}`));
+      const reqs=[];
+      if(!canBuildings)reqs.push(`Build ${have}/${e.need} structures`);
+      if(!canCoins)reqs.push(`Need 🪙 ${fmt(e.advance)}`);
+      b.appendChild(el('span','sm',reqs.join(' · ')));
+    }
+    advanceWrap.appendChild(b);
+  }
+
+  function advanceEra(){
+    const e=era();
+    if(eraBuildingsTotal(S.era)<e.need||!spendCoins(e.advance))return;
+    S.era++;save();
+    setBg('empire');
+    refreshAll();
+    // celebration
+    const ov=el('div','overlay');
+    const m=el('div','modal glass');
+    const ne=ERAS[S.era];
+    m.appendChild(el('div','em',ne.emoji));
+    m.appendChild(el('h2',null,'New Age!'));
+    m.appendChild(el('p',null,`Your people advance to the ${ne.name}. Productivity is now x${ne.mult} — study sessions earn far more!`));
+    const ok=el('button','btn modal-btn primary','Onward 🚀');
+    ok.addEventListener('click',()=>ov.remove());
+    m.appendChild(ok);ov.appendChild(m);document.body.appendChild(ov);
+  }
+
+  function renderShop(){
+    const e=era();
+    shop.innerHTML='';
+    e.b.forEach(b=>{
+      const owned=ownedCount(S.era,b.id);
+      const cost=buildingCost(e,b,owned);
+      const item=el('div','shop-item glass');
+      item.appendChild(el('div','emo',b.e));
+      const info=el('div','info');
+      const nm=el('div','nm');nm.appendChild(el('span',null,b.n));
+      if(owned>0){nm.appendChild(el('span','owned','×'+owned));}
+      info.appendChild(nm);
+      info.appendChild(el('div','ds',b.d));
+      item.appendChild(info);
+      const can=S.coins>=cost;
+      const buy=el('button','btn buy-btn'+(can?'':' cant'));
+      buy.innerHTML='🪙 '+fmt(cost);
+      buy.addEventListener('click',(ev)=>{
+        const c=buildingCost(e,b,ownedCount(S.era,b.id));
+        if(!spendCoins(c))return;
+        if(!S.owned[S.era])S.owned[S.era]={};
+        S.owned[S.era][b.id]=(S.owned[S.era][b.id]||0)+1;
+        save();
+        floatCoin('-'+fmt(c),ev.clientX,ev.clientY);
+        renderScene();renderPower();renderAdvance();renderShop();
+      });
+      item.appendChild(buy);
+      shop.appendChild(item);
     });
   }
 
-  function render(){
-    updateRing(ring,0,'stopwatch',false,running);
-    if(running){glowOrb.style.animation='glow-pulse 1.5s ease-in-out infinite';glowOrb.style.opacity='1';}
-    else{glowOrb.style.animation='none';glowOrb.style.opacity='0';}
-
-    const {h,m,s,cs,hasH}=formatTime(elapsed,true);
-    if(hasH){dH.style.display='';dHS.style.display='';dH.textContent=h;dM.className='digit sm';dMS.className='sep sm';dS.className='digit sm';}
-    else{dH.style.display='none';dHS.style.display='none';dM.className='digit';dMS.className='sep';dS.className='digit';}
-    dM.textContent=m;dS.textContent=s;msEl.textContent='.'+cs;
-
-    controls.innerHTML='';
-    if(running){
-      const bLap=document.createElement('button');bLap.className='glass-btn ctrl-btn';
-      const ci=document.createElement('span');ci.className='ci';ci.textContent='⊙';
-      const cl=document.createElement('span');cl.className='cl';cl.textContent='Lap';
-      bLap.appendChild(ci);bLap.appendChild(cl);bLap.addEventListener('click',lap);
-      controls.appendChild(bLap);
-      const bP=document.createElement('button');bP.className='glass-btn big-btn';bP.textContent='⏸';
-      bP.style.cssText='background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.22);box-shadow:0 4px 14px rgba(0,0,0,.5)';
-      bP.addEventListener('click',pause);controls.appendChild(bP);
-    } else {
-      const bR=document.createElement('button');bR.className='glass-btn ctrl-btn';
-      const ci=document.createElement('span');ci.className='ci';ci.textContent='↩';
-      const cl=document.createElement('span');cl.className='cl';cl.textContent='Reset';
-      bR.appendChild(ci);bR.appendChild(cl);
-      if(elapsed===0)bR.style.opacity='.3';
-      bR.addEventListener('click',reset);controls.appendChild(bR);
-      const bS=document.createElement('button');bS.className='glass-btn big-btn';bS.textContent='▶';
-      bS.style.cssText='background:rgba(52,199,89,.28);border-color:rgba(52,199,89,.55);box-shadow:0 0 28px rgba(52,199,89,.22),0 4px 14px rgba(0,0,0,.5)';
-      bS.addEventListener('click',start);controls.appendChild(bS);
-    }
-  }
-
-  render();
+  function refreshAll(){renderBanner();renderScene();renderPower();renderAdvance();renderShop();}
+  refreshAll();
   return root;
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// ROUTER
-// ══════════════════════════════════════════════════════════════════════════════
-let currentTab='timer';
-let currentView=null;
+/* ═══════════ STATS VIEW ═══════════ */
+function StatsView(){
+  const root=el('div');root.style.cssText='display:flex;flex-direction:column;align-items:center;gap:14px;width:100%';
 
-function showTab(tab){
-  currentTab=tab;
-  setBg(tab,false);
-  $('header').querySelector('h1').textContent=tab==='timer'?'Timer':'Stopwatch';
+  const grid=el('div','stats-grid');
+  const mk=(v,l)=>{const c=el('div','stat-big glass');c.appendChild(el('div','v',v));c.appendChild(el('div','l',l));return c;};
+  grid.appendChild(mk('⏳ '+fmtDur(S.totalFocusMs),'Total focused'));
+  grid.appendChild(mk('📚 '+S.sessions,'Sessions'));
+  grid.appendChild(mk('🪙 '+fmt(S.totalEarned),'Coins earned'));
+  grid.appendChild(mk('🔥 '+S.bestStreak,'Best streak'));
+  grid.appendChild(mk('🔥 '+S.streak,'Current streak'));
+  grid.appendChild(mk('😵 '+S.distractions,'Distractions'));
+  root.appendChild(grid);
 
-  document.querySelectorAll('.tab-btn').forEach(b=>{
-    b.classList.toggle('active',b.dataset.tab===tab);
+  const tlTitle=el('div','shop-title','Your journey through time');tlTitle.style.alignSelf='center';
+  root.appendChild(tlTitle);
+  const tl=el('div','timeline');
+  ERAS.forEach((e,i)=>{
+    const cls=i<S.era?'done':i===S.era?'cur':'lock';
+    const it=el('div','tl-item glass '+cls);
+    it.appendChild(el('div','te',e.emoji));
+    it.appendChild(el('div','tn',e.name));
+    it.appendChild(el('div','ts',i<S.era?'✓ Built':i===S.era?'Current':'Locked'));
+    tl.appendChild(it);
   });
+  root.appendChild(tl);
 
-  const content=$('content');
-  content.innerHTML='';
-  content.style.animation='none';
-  void content.offsetWidth;
-  content.style.animation='fade-in .22s ease';
-
-  currentView=tab==='timer'?TimerView():StopwatchView();
-  content.appendChild(currentView);
+  const reset=el('button','btn reset-btn','Reset all progress');
+  reset.addEventListener('click',()=>{
+    const ov=el('div','overlay');
+    const m=el('div','modal glass');
+    m.appendChild(el('div','em','⚠️'));
+    m.appendChild(el('h2',null,'Reset everything?'));
+    m.appendChild(el('p',null,'This wipes your coins, empire and all stats. This cannot be undone.'));
+    const row=el('div','row');
+    const cancel=el('button','btn modal-btn','Cancel');cancel.addEventListener('click',()=>ov.remove());
+    const conf=el('button','btn modal-btn','Reset');conf.style.cssText='background:rgba(255,69,58,.3);border-color:rgba(255,69,58,.5);color:#ff8a82';
+    conf.addEventListener('click',()=>{S=Object.assign({},DEF,{owned:{}});save();ov.remove();updateCoinChip();showTab('study');});
+    row.appendChild(cancel);row.appendChild(conf);
+    m.appendChild(row);ov.appendChild(m);document.body.appendChild(ov);
+  });
+  root.appendChild(reset);
+  return root;
 }
 
-document.querySelectorAll('.tab-btn').forEach(b=>{
-  b.addEventListener('click',()=>showTab(b.dataset.tab));
-});
+/* ═══════════ ROUTER ═══════════ */
+let currentTab='study',currentView=null;
+function showTab(tab){
+  if(currentView&&currentView._cleanup)currentView._cleanup();
+  currentTab=tab;
+  setBg(tab);
+  $('title').textContent=tab==='study'?'Study':tab==='empire'?'Empire':'Stats';
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  const content=$('content');
+  content.innerHTML='';
+  content.style.animation='none';void content.offsetWidth;content.style.animation='fade-in .25s ease';
+  currentView=tab==='study'?StudyView():tab==='empire'?EmpireView():StatsView();
+  content.appendChild(currentView);
+}
+document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
 
-showTab('timer');
+// track global distraction count stat
+onFocusChange(v=>{if(!v&&currentTab==='study'){/* counted per-session */}});
 
+updateCoinChip();
+showTab('study');
+
+// PWA service worker
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
+}
 })();
 </script>
 </body>
